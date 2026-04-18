@@ -1,0 +1,6 @@
+{
+  "decision_threshold": 0.9,
+  "minority_class": 0,
+  "majority_class": 1,
+  "threshold_goal": 0.6
+}
