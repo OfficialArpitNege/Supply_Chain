@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Supply Chain Map</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --low: #22c55e;
+      --medium: #facc15;
+      --high: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b, var(--bg));
+      color: var(--text);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, #111827, #0b1220);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 18px;
+    }
+
+    .panel h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .result {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    .row .key { color: var(--muted); }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      color: #0b1220;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background: #1d4ed8;
+      border: 0;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #1e40af;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+
+      .panel {
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #map { height: calc(100vh - 290px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>Smart Supply Chain Monitor</h1>
+      <p>Click once to set Start (Warehouse), click again to set Destination and run dynamic route risk analysis.</p>
+
+      <div class="result" id="resultPanel">
+        <div class="row"><span class="key">Status</span><span id="statusText">Select Start location</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="resetBtn" class="btn" type="button">Reset Selection</button>
+      </div>
+
+      <div class="hint">Backend endpoint: http://127.0.0.1:8000/analyze</div>
+    </aside>
+
+    <main id="map"></main>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const BACKEND_URL = "http://127.0.0.1:8000/analyze";
+
+    const map = L.map("map").setView([21.1458, 79.0882], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let startPoint = null;
+    let destinationPoint = null;
+    let startMarker = null;
+    let destinationMarker = null;
+    let routeLine = null;
+
+    function setStatus(message) {
+      const statusText = document.getElementById("statusText");
+      if (statusText) {
+        statusText.textContent = message;
+      }
+    }
+
+    function clearMapSelection() {
+      if (startMarker) {
+        map.removeLayer(startMarker);
+        startMarker = null;
+      }
+      if (destinationMarker) {
+        map.removeLayer(destinationMarker);
+        destinationMarker = null;
+      }
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      startPoint = null;
+      destinationPoint = null;
+      setStatus("Select Start location");
+      const panel = document.getElementById("resultPanel");
+      panel.innerHTML = '<div class="row"><span class="key">Status</span><span id="statusText">Select Start location</span></div>';
+    }
+
+    function markerColorByLabel(label) {
+      return label === "start" ? "#2563eb" : "#ef4444";
+    }
+
+    function addPointMarker(lat, lon, label, title) {
+      const color = markerColorByLabel(label);
+      return L.circleMarker([lat, lon], {
+        radius: 9,
+        color,
+        fillColor: color,
+        fillOpacity: 0.9,
+        weight: 2
+      }).addTo(map).bindPopup(title);
+    }
+
+    function getRiskColor(risk) {
+      if (risk === "HIGH") {
+        return "#ef4444";
+      }
+      if (risk === "MEDIUM") {
+        return "#facc15";
+      }
+      return "#22c55e";
+    }
+
+    function renderPanel(data) {
+      const panel = document.getElementById("resultPanel");
+      const color = getRiskColor(data.risk);
+
+      panel.innerHTML = `
+        <div class="row"><span class="key">Start</span><span>${data.start_location.lat}, ${data.start_location.lon}</span></div>
+        <div class="row"><span class="key">Destination</span><span>${data.destination.lat}, ${data.destination.lon}</span></div>
+        <div class="row"><span class="key">Weather</span><span>${data.weather}</span></div>
+        <div class="row"><span class="key">Temperature</span><span>${data.temperature} °C</span></div>
+        <div class="row"><span class="key">Distance</span><span>${data.distance_km} km</span></div>
+        <div class="row"><span class="key">Base ETA</span><span>${data.estimated_time_min} min</span></div>
+        <div class="row"><span class="key">Traffic ETA</span><span>${data.traffic_time_min ?? data.estimated_time_min} min</span></div>
+        <div class="row"><span class="key">Adjusted ETA</span><span>${data.final_time_min ?? data.estimated_time_min} min</span></div>
+        <div class="row"><span class="key">Traffic Speed</span><span>${data.traffic_speed} km/h</span></div>
+        <div class="row"><span class="key">Congestion</span><span>${data.congestion_level}</span></div>
+        <div class="row"><span class="key">Risk</span><span class="risk-badge" style="background:${color}">${data.risk}</span></div>
+      `;
+    }
+
+    function renderError(message) {
+      const panel = document.getElementById("resultPanel");
+      panel.innerHTML = `<div class="row"><span class="key">Error</span><span>${message}</span></div>`;
+    }
+
+    async function analyzeSelectedPoints() {
+      if (!startPoint || !destinationPoint) {
+        return;
+      }
+
+      setStatus("Analyzing route...");
+
+      try {
+        const query = new URLSearchParams({
+          start_lat: String(startPoint.lat),
+          start_lon: String(startPoint.lon),
+          end_lat: String(destinationPoint.lat),
+          end_lon: String(destinationPoint.lon)
+        });
+
+        const response = await fetch(`${BACKEND_URL}?${query.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Backend returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        const riskColor = getRiskColor(data.risk);
+
+        if (routeLine) {
+          map.removeLayer(routeLine);
+        }
+
+        if (Array.isArray(data.route_path) && data.route_path.length > 1) {
+          routeLine = L.polyline(data.route_path, {
+            color: riskColor,
+            weight: 5,
+            opacity: 0.8
+          }).addTo(map);
+        }
+
+        const bounds = L.latLngBounds([
+          [data.start_location.lat, data.start_location.lon],
+          [data.destination.lat, data.destination.lon]
+        ]);
+
+        if (routeLine) {
+          const routeBounds = routeLine.getBounds();
+          if (routeBounds.isValid()) {
+            map.fitBounds(routeBounds.pad(0.15));
+          } else {
+            map.fitBounds(bounds.pad(0.2));
+          }
+        } else {
+          map.fitBounds(bounds.pad(0.2));
+        }
+
+        destinationMarker.bindPopup(`
+          <b>Delivery Location</b><br>
+          <b>Weather:</b> ${data.weather}<br>
+          <b>Distance:</b> ${data.distance_km} km<br>
+          <b>Traffic ETA:</b> ${data.traffic_time_min ?? data.estimated_time_min} min<br>
+          <b>Adjusted ETA:</b> ${data.final_time_min ?? data.estimated_time_min} min<br>
+          <b>Risk:</b> <span style="color:${riskColor}; font-weight:700;">${data.risk}</span>
+        `).openPopup();
+
+        renderPanel(data);
+        setStatus("Analysis complete");
+      } catch (error) {
+        renderError(error.message || "Failed to fetch analysis");
+      }
+    }
+
+    map.on("click", async (event) => {
+      const lat = event.latlng.lat;
+      const lon = event.latlng.lng;
+
+      if (!startPoint) {
+        startPoint = { lat, lon };
+        startMarker = addPointMarker(lat, lon, "start", "Start (Warehouse)");
+        startMarker.openPopup();
+        setStatus("Select Destination location");
+        return;
+      }
+
+      if (!destinationPoint) {
+        destinationPoint = { lat, lon };
+        destinationMarker = addPointMarker(lat, lon, "destination", "Delivery Location");
+        await analyzeSelectedPoints();
+        return;
+      }
+
+      clearMapSelection();
+      startPoint = { lat, lon };
+      startMarker = addPointMarker(lat, lon, "start", "Start (Warehouse)");
+      startMarker.openPopup();
+      setStatus("Select Destination location");
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", clearMapSelection);
+  </script>
+</body>
+</html>
