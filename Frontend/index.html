@@ -32,7 +32,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 340px 1fr 340px;
       min-height: 100vh;
     }
 
@@ -40,6 +40,11 @@
       background: linear-gradient(180deg, #111827, #0b1220);
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       padding: 18px;
+    }
+
+    .panel-right {
+      border-right: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .panel h1 {
@@ -90,6 +95,55 @@
       color: var(--muted);
     }
 
+    .result-card {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .result-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 10px;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.95rem;
+    }
+
+    .result-item .label {
+      color: var(--muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      color: #0b1220;
+    }
+
+    .insight {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      line-height: 1.4;
+    }
+
     .controls {
       margin-top: 12px;
       display: flex;
@@ -110,15 +164,19 @@
       background: #1e40af;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1200px) {
       .layout {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto 1fr auto;
       }
 
       .panel {
         border-right: 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .panel-right {
+        border-left: 0;
       }
 
       #map { height: calc(100vh - 290px); }
@@ -131,18 +189,39 @@
       <h1>Smart Supply Chain Monitor</h1>
       <p>Click once to set Start (Warehouse), click again to set Destination and run dynamic route risk analysis.</p>
 
-      <div class="result" id="resultPanel">
-        <div class="row"><span class="key">Status</span><span id="statusText">Select Start location</span></div>
+      <div class="result-card" id="resultPanel">
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Select Start location</span></div>
+        </div>
       </div>
 
       <div class="controls">
         <button id="resetBtn" class="btn" type="button">Reset Selection</button>
       </div>
 
-      <div class="hint">Backend endpoint: http://127.0.0.1:8000/analyze</div>
+      <div class="hint">Backend endpoint: http://127.0.0.1:8000/analyze-route</div>
     </aside>
 
     <main id="map"></main>
+
+    <aside class="panel panel-right">
+      <h1>Route Metrics</h1>
+      <p>Live route telemetry from the selected path.</p>
+
+      <div class="result-card" id="statsPanel">
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Distance</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Temperature</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Base ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Adjusted ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Weather</span><span>N/A</span></div>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <script
@@ -151,7 +230,7 @@
     crossorigin=""
   ></script>
   <script>
-    const BACKEND_URL = "http://127.0.0.1:8000/analyze";
+    const BACKEND_URL = "http://127.0.0.1:8000/analyze-route";
 
     const map = L.map("map").setView([21.1458, 79.0882], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -189,7 +268,26 @@
       destinationPoint = null;
       setStatus("Select Start location");
       const panel = document.getElementById("resultPanel");
-      panel.innerHTML = '<div class="row"><span class="key">Status</span><span id="statusText">Select Start location</span></div>';
+      panel.innerHTML = `
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Select Start location</span></div>
+        </div>
+      `;
+
+      const statsPanel = document.getElementById("statsPanel");
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Distance</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Temperature</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Base ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Adjusted ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Weather</span><span>N/A</span></div>
+        </div>
+      `;
     }
 
     function markerColorByLabel(label) {
@@ -217,28 +315,184 @@
       return "#22c55e";
     }
 
-    function renderPanel(data) {
-      const panel = document.getElementById("resultPanel");
-      const color = getRiskColor(data.risk);
+    async function analyzeRoute(startLat, startLon, endLat, endLon) {
+      const response = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          start_lat: startLat,
+          start_lon: startLon,
+          end_lat: endLat,
+          end_lon: endLon
+        })
+      });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Backend returned ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    function delayLabel(delay) {
+      return Number(delay) === 1 ? "Delayed" : "On Time";
+    }
+
+    function demandLabel(demand) {
+      if (Number(demand) < 1.8) {
+        return "Low";
+      }
+      if (Number(demand) < 2.3) {
+        return "Medium";
+      }
+      return "High";
+    }
+
+    function riskColor(risk) {
+      if (risk === "HIGH") {
+        return "#ef4444";
+      }
+      if (risk === "MEDIUM") {
+        return "#facc15";
+      }
+      return "#22c55e";
+    }
+
+    function riskInsight(risk) {
+      if (risk === "HIGH") {
+        return "High delay risk due to traffic and demand.";
+      }
+      if (risk === "MEDIUM") {
+        return "Moderate risk. Keep a small buffer in dispatch timing.";
+      }
+      return "Route is clear with low delay risk.";
+    }
+
+    function renderLoading() {
+      const panel = document.getElementById("resultPanel");
       panel.innerHTML = `
-        <div class="row"><span class="key">Start</span><span>${data.start_location.lat}, ${data.start_location.lon}</span></div>
-        <div class="row"><span class="key">Destination</span><span>${data.destination.lat}, ${data.destination.lon}</span></div>
-        <div class="row"><span class="key">Weather</span><span>${data.weather}</span></div>
-        <div class="row"><span class="key">Temperature</span><span>${data.temperature} °C</span></div>
-        <div class="row"><span class="key">Distance</span><span>${data.distance_km} km</span></div>
-        <div class="row"><span class="key">Base ETA</span><span>${data.estimated_time_min} min</span></div>
-        <div class="row"><span class="key">Traffic ETA</span><span>${data.traffic_time_min ?? data.estimated_time_min} min</span></div>
-        <div class="row"><span class="key">Adjusted ETA</span><span>${data.final_time_min ?? data.estimated_time_min} min</span></div>
-        <div class="row"><span class="key">Traffic Speed</span><span>${data.traffic_speed} km/h</span></div>
-        <div class="row"><span class="key">Congestion</span><span>${data.congestion_level}</span></div>
-        <div class="row"><span class="key">Risk</span><span class="risk-badge" style="background:${color}">${data.risk}</span></div>
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Analyzing route...</span></div>
+        </div>
+      `;
+
+      const statsPanel = document.getElementById("statsPanel");
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span>Fetching live metrics...</span></div>
+        </div>
+      `;
+    }
+
+    function formatNumber(value, suffix, decimals) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) {
+        return "N/A";
+      }
+      return `${number.toFixed(decimals)}${suffix}`;
+    }
+
+    function renderRouteStats(data) {
+      const statsPanel = document.getElementById("statsPanel");
+
+      const distance = formatNumber(data.distance_km, " km", 2);
+      const temperature = formatNumber(data.temperature, " °C", 1);
+      const baseEta = formatNumber(data.estimated_time_min, " min", 2);
+      const trafficEta = formatNumber(data.traffic_time_min, " min", 2);
+      const adjustedEta = formatNumber(data.final_time_min, " min", 2);
+      const trafficSpeed = formatNumber(data.traffic_speed, " km/h", 1);
+      const weather = data.weather || "N/A";
+
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Distance</span><span>${distance}</span></div>
+          <div class="result-item"><span class="label">Temperature</span><span>${temperature}</span></div>
+          <div class="result-item"><span class="label">Base ETA</span><span>${baseEta}</span></div>
+          <div class="result-item"><span class="label">Traffic ETA</span><span>${trafficEta}</span></div>
+          <div class="result-item"><span class="label">Adjusted ETA</span><span>${adjustedEta}</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>${trafficSpeed}</span></div>
+          <div class="result-item"><span class="label">Weather</span><span>${weather}</span></div>
+        </div>
+      `;
+    }
+
+    function renderResults(data) {
+      const delayStatus = delayLabel(data.delay);
+      const demand = demandLabel(data.demand);
+      const confidence = Math.round((Number(data.confidence) || 0) * 100);
+      const risk = String(data.risk_level || "LOW").toUpperCase();
+      const color = riskColor(risk);
+
+      const panel = document.getElementById("resultPanel");
+      panel.innerHTML = `
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Delay Status</span><span>${delayStatus}</span></div>
+          <div class="result-item"><span class="label">Demand Level</span><span>${demand}</span></div>
+          <div class="result-item"><span class="label">Confidence</span><span>${confidence}%</span></div>
+          <div class="result-item"><span class="label">Risk Level</span><span class="status-pill" style="background:${color}">${risk}</span></div>
+        </div>
+        <div class="insight">${riskInsight(risk)}</div>
       `;
     }
 
     function renderError(message) {
       const panel = document.getElementById("resultPanel");
-      panel.innerHTML = `<div class="row"><span class="key">Error</span><span>${message}</span></div>`;
+      panel.innerHTML = `
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Failed to analyze route</span></div>
+        </div>
+        <div class="insight">${message}</div>
+      `;
+
+      const statsPanel = document.getElementById("statsPanel");
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span>Failed to fetch route metrics</span></div>
+        </div>
+      `;
+    }
+
+    function drawRoutePolyline(data) {
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+
+      let path = null;
+      if (Array.isArray(data.route_path) && data.route_path.length > 1) {
+        path = data.route_path;
+      } else if (startPoint && destinationPoint) {
+        path = [
+          [startPoint.lat, startPoint.lon],
+          [destinationPoint.lat, destinationPoint.lon]
+        ];
+      }
+
+      if (!path) {
+        return;
+      }
+
+      const risk = String(data.risk_level || "LOW").toUpperCase();
+      routeLine = L.polyline(path, {
+        color: riskColor(risk),
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: "round"
+      }).addTo(map);
+
+      const bounds = routeLine.getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds.pad(0.15));
+      }
     }
 
     async function analyzeSelectedPoints() {
@@ -247,64 +501,17 @@
       }
 
       setStatus("Analyzing route...");
+      renderLoading();
 
       try {
-        const query = new URLSearchParams({
-          start_lat: String(startPoint.lat),
-          start_lon: String(startPoint.lon),
-          end_lat: String(destinationPoint.lat),
-          end_lon: String(destinationPoint.lon)
-        });
-
-        const response = await fetch(`${BACKEND_URL}?${query.toString()}`);
-        if (!response.ok) {
-          throw new Error(`Backend returned ${response.status}`);
-        }
-
-        const data = await response.json();
-        const riskColor = getRiskColor(data.risk);
-
-        if (routeLine) {
-          map.removeLayer(routeLine);
-        }
-
-        if (Array.isArray(data.route_path) && data.route_path.length > 1) {
-          routeLine = L.polyline(data.route_path, {
-            color: riskColor,
-            weight: 5,
-            opacity: 0.8
-          }).addTo(map);
-        }
-
-        const bounds = L.latLngBounds([
-          [data.start_location.lat, data.start_location.lon],
-          [data.destination.lat, data.destination.lon]
-        ]);
-
-        if (routeLine) {
-          const routeBounds = routeLine.getBounds();
-          if (routeBounds.isValid()) {
-            map.fitBounds(routeBounds.pad(0.15));
-          } else {
-            map.fitBounds(bounds.pad(0.2));
-          }
-        } else {
-          map.fitBounds(bounds.pad(0.2));
-        }
-
-        destinationMarker.bindPopup(`
-          <b>Delivery Location</b><br>
-          <b>Weather:</b> ${data.weather}<br>
-          <b>Distance:</b> ${data.distance_km} km<br>
-          <b>Traffic ETA:</b> ${data.traffic_time_min ?? data.estimated_time_min} min<br>
-          <b>Adjusted ETA:</b> ${data.final_time_min ?? data.estimated_time_min} min<br>
-          <b>Risk:</b> <span style="color:${riskColor}; font-weight:700;">${data.risk}</span>
-        `).openPopup();
-
-        renderPanel(data);
+        const data = await analyzeRoute(startPoint.lat, startPoint.lon, destinationPoint.lat, destinationPoint.lon);
+        drawRoutePolyline(data);
+        renderResults(data);
+        renderRouteStats(data);
         setStatus("Analysis complete");
       } catch (error) {
-        renderError(error.message || "Failed to fetch analysis");
+        renderError(error.message || "Failed to analyze route");
+        setStatus("Failed to analyze route");
       }
     }
 
