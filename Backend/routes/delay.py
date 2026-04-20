@@ -22,6 +22,10 @@ class DelayRequest(BaseModel):
     weekday: Optional[int] = Field(default=None, ge=0, le=6, validation_alias=AliasChoices("weekday", "Weekday"))
     timestamp: Optional[str] = Field(default=None)
     temperature_C: Optional[float] = Field(default=None)
+    temperature: Optional[float] = Field(default=None)
+    traffic_speed: Optional[float] = Field(default=None, ge=0.0)
+    base_eta: Optional[float] = Field(default=None, ge=0.0)
+    traffic_eta: Optional[float] = Field(default=None, ge=0.0)
     start_lat: Optional[float] = Field(default=None, ge=-90, le=90)
     start_lon: Optional[float] = Field(default=None, ge=-180, le=180)
     end_lat: Optional[float] = Field(default=None, ge=-90, le=90)
@@ -29,8 +33,13 @@ class DelayRequest(BaseModel):
 
 
 class DelayResponse(BaseModel):
-    delay: int
+    prediction: int
+    probability_delayed: float
     confidence: float
+    is_delayed: bool
+    risk_level: str
+    reason: str
+    delay: int
 
 
 @router.post("/predict-delay", response_model=DelayResponse)

@@ -272,6 +272,179 @@ class ModelService:
         except ValueError:
             return None
 
+    def _safe_float(self, value: Any, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _extract_realtime_signals(self, data_dict: Dict[str, Any]) -> Dict[str, float]:
+        distance = self._safe_float(
+            data_dict.get("distance", data_dict.get("distance_km", 0.0)),
+            0.0,
+        )
+        traffic_speed = self._safe_float(data_dict.get("traffic_speed", 0.0), 0.0)
+        base_eta = self._safe_float(
+            data_dict.get("base_eta", data_dict.get("estimated_time_min", 0.0)),
+            0.0,
+        )
+        traffic_eta = self._safe_float(
+            data_dict.get(
+                "traffic_eta",
+                data_dict.get("traffic_time_min", data_dict.get("final_time_min", 0.0)),
+            ),
+            0.0,
+        )
+        weather = str(data_dict.get("weather", "")).strip()
+        temperature = self._safe_float(
+            data_dict.get("temperature", data_dict.get("temperature_C", 0.0)),
+            0.0,
+        )
+
+        safe_base_eta = base_eta if base_eta > 0 else 1.0
+        eta_ratio = traffic_eta / safe_base_eta
+
+        return {
+            "distance": float(max(distance, 0.0)),
+            "traffic_speed": float(max(traffic_speed, 0.0)),
+            "base_eta": float(max(base_eta, 0.0)),
+            "traffic_eta": float(max(traffic_eta, 0.0)),
+            "eta_ratio": float(max(eta_ratio, 0.0)),
+            "temperature": float(temperature),
+            "weather": weather,
+        }
+
+    def _apply_delay_probability_adjustments(self, probability: float, signals: Dict[str, Any]) -> Dict[str, Any]:
+        adjusted_probability = float(probability)
+
+        eta_ratio = float(signals.get("eta_ratio", 1.0))
+        traffic_speed = float(signals.get("traffic_speed", 0.0))
+        distance = float(signals.get("distance", 0.0))
+        weather = str(signals.get("weather", "")).strip().lower()
+
+        factors = {
+            "traffic": 1.0,
+            "speed": 1.0,
+            "weather": 1.0,
+            "distance": 1.0,
+        }
+
+        if eta_ratio > 1.5:
+            factors["traffic"] = 1.3
+        elif eta_ratio < 1.2:
+            factors["traffic"] = 0.6
+
+        if traffic_speed > 40:
+            factors["speed"] = 0.6
+        elif traffic_speed < 20:
+            factors["speed"] = 1.3
+
+        if weather in {"rain", "rainy", "storm", "stormy", "thunderstorm"}:
+            factors["weather"] = 1.2
+
+        if distance > 10:
+            factors["distance"] = 1.1
+        elif distance < 0.5:
+            factors["distance"] = 0.5
+
+        # Keep distance as low-importance when real-time route conditions are clearly favorable.
+        if distance > 10 and eta_ratio < 1.2 and traffic_speed > 40:
+            factors["distance"] = 0.8
+
+        adjusted_probability *= factors["traffic"]
+        adjusted_probability *= factors["speed"]
+        adjusted_probability *= factors["weather"]
+        adjusted_probability *= factors["distance"]
+        adjusted_probability = max(0.0, min(1.0, adjusted_probability))
+
+        return {
+            "probability": float(adjusted_probability),
+            "factors": factors,
+        }
+
+    def _reason_from_dominant_factor(self, signals: Dict[str, Any], factors: Dict[str, float]) -> str:
+        factor_priority = {
+            "traffic": 4,
+            "speed": 3,
+            "weather": 2,
+            "distance": 1,
+        }
+        dominant_factor = max(
+            factors.keys(),
+            key=lambda name: (abs(float(factors[name]) - 1.0), factor_priority[name]),
+        )
+
+        eta_ratio = float(signals.get("eta_ratio", 1.0))
+        traffic_speed = float(signals.get("traffic_speed", 0.0))
+        distance = float(signals.get("distance", 0.0))
+        weather = str(signals.get("weather", "")).strip().lower()
+
+        if dominant_factor == "traffic":
+            if eta_ratio > 1.5:
+                return "High traffic congestion detected"
+            if eta_ratio < 1.2:
+                return "Low traffic, route is clear"
+            return "Traffic conditions are moderately affecting travel time"
+
+        if dominant_factor == "speed":
+            if traffic_speed < 20:
+                return "Low traffic speed increasing delay risk"
+            if traffic_speed > 40:
+                return "Healthy average speed reducing delay risk"
+            return "Current speed indicates moderate route friction"
+
+        if dominant_factor == "weather":
+            if weather in {"rain", "rainy", "storm", "stormy", "thunderstorm"}:
+                return "Weather conditions increasing delay risk"
+            return "Weather is stable and not increasing delay risk"
+
+        if distance < 0.5:
+            return "Short distance route, low delay risk"
+        if distance > 10:
+            return "Long distance contributes slight delay risk"
+        return "Route signals indicate moderate delay risk"
+
+    def _risk_level_from_probability(self, probability_delayed: float) -> str:
+        # Keep LOW risk fully below or at the decision boundary to avoid
+        # delayed predictions being labeled LOW risk.
+        if probability_delayed <= float(self.delay_threshold):
+            return "LOW"
+        if probability_delayed <= 0.7:
+            return "MEDIUM"
+        return "HIGH"
+
+    def _build_delay_output(
+        self,
+        probability_delayed: float,
+        signals: Dict[str, Any],
+        factors: Optional[Dict[str, float]] = None,
+    ) -> Dict[str, Any]:
+        bounded_probability = max(0.0, min(1.0, float(probability_delayed)))
+        prediction = 1 if bounded_probability > float(self.delay_threshold) else 0
+        confidence = bounded_probability if prediction == 1 else (1.0 - bounded_probability)
+
+        applied_factors = factors or {
+            "traffic": 1.0,
+            "speed": 1.0,
+            "weather": 1.0,
+            "distance": 1.0,
+        }
+        reason = self._reason_from_dominant_factor(signals, applied_factors)
+        risk_level = self._risk_level_from_probability(bounded_probability)
+
+        return {
+            "prediction": int(prediction),
+            "probability_delayed": float(bounded_probability),
+            "confidence": float(confidence),
+            "is_delayed": bool(prediction == 1),
+            "risk_level": risk_level,
+            "reason": reason,
+            "delay": int(prediction),
+            "probability_on_time": float(1.0 - bounded_probability),
+            "threshold_used": float(self.delay_threshold),
+            "eta_ratio": float(signals.get("eta_ratio", 1.0)),
+        }
+
     def preprocess_features(self, data_dict: Dict[str, Any]) -> np.ndarray:
         if self.delay_model is None:
             raise RuntimeError("Delay model is not available.")
@@ -352,41 +525,20 @@ class ModelService:
             return {"delay": None, "confidence": 0.0}
 
         features = self.preprocess_features(data_dict)
+        signals = self._extract_realtime_signals(data_dict)
 
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
                 if hasattr(self.delay_model, "predict_proba"):
                     probabilities = self.delay_model.predict_proba(features)[0]
+                    raw_prob_delayed = float(probabilities[1]) if len(probabilities) > 1 else float(probabilities[0])
                 else:
                     predicted_class = int(self.delay_model.predict(features)[0])
-                    prob_delayed = 1.0 if predicted_class == 1 else 0.0
-                    prob_ontime = 1.0 - prob_delayed
-                    prediction = 1 if prob_delayed > self.delay_threshold else 0
-                    confidence = max(prob_ontime, prob_delayed)
+                    raw_prob_delayed = 1.0 if predicted_class == 1 else 0.0
 
-                    return {
-                        "delay": int(prediction),
-                        "confidence": float(confidence),
-                        "probability_on_time": float(prob_ontime),
-                        "probability_delayed": float(prob_delayed),
-                        "threshold_used": float(self.delay_threshold),
-                    }
-
-                prob_delayed = float(probabilities[1]) if len(probabilities) > 1 else float(probabilities[0])
-                prob_delayed = float(probabilities[1]) if len(probabilities) > 1 else float(probabilities[0])
-                prob_ontime = float(probabilities[0]) if len(probabilities) > 1 else float(1.0 - probabilities[0])
-
-            prediction = 1 if prob_delayed > self.delay_threshold else 0
-            confidence = max(prob_ontime, prob_delayed)
-
-            return {
-                "delay": int(prediction),
-                "confidence": float(confidence),
-                "probability_on_time": float(prob_ontime),
-                "probability_delayed": float(prob_delayed),
-                "threshold_used": float(self.delay_threshold),
-            }
+            adjusted = self._apply_delay_probability_adjustments(raw_prob_delayed, signals)
+            return self._build_delay_output(adjusted["probability"], signals, adjusted["factors"])
         except Exception as exc:
             logger.warning("Delay prediction failed (%s): %r", type(exc).__name__, exc)
             return {"delay": None, "confidence": 0.0}
@@ -471,24 +623,14 @@ class ModelService:
     def predict_delay(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
         if self.delay_model is not None:
             result = self.predict_delay_model(data_dict)
-            if result.get("delay") is not None and float(result.get("confidence", 0.0)) >= 0.6:
-                fallback_result = predict_delay_fallback(data_dict)
-                if int(result["delay"]) != int(fallback_result["delay"]):
-                    if float(result["confidence"]) >= 0.96:
-                        return {"delay": int(result["delay"]), "confidence": float(result["confidence"])}
-
-                    return {
-                        "delay": int(fallback_result["delay"]),
-                        "confidence": float(fallback_result["confidence"]),
-                    }
-
-                return {"delay": int(result["delay"]), "confidence": float(result["confidence"])}
+            if result.get("prediction") is not None:
+                return result
 
         fallback_result = predict_delay_fallback(data_dict)
-        return {
-            "delay": int(fallback_result["delay"]),
-            "confidence": float(fallback_result["confidence"]),
-        }
+        signals = self._extract_realtime_signals(data_dict)
+        base_probability = float(fallback_result.get("confidence", 0.0))
+        adjusted = self._apply_delay_probability_adjustments(base_probability, signals)
+        return self._build_delay_output(adjusted["probability"], signals, adjusted["factors"])
 
     def predict_demand(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
         if self.demand_model is not None:

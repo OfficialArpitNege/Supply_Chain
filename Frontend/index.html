@@ -200,7 +200,7 @@
         <button id="resetBtn" class="btn" type="button">Reset Selection</button>
       </div>
 
-      <div class="hint">Backend endpoint: http://127.0.0.1:8000/analyze-route</div>
+      <div class="hint">Backend endpoint: http://127.0.0.1:8000/recommend-routes</div>
     </aside>
 
     <main id="map"></main>
@@ -230,7 +230,7 @@
     crossorigin=""
   ></script>
   <script>
-    const BACKEND_URL = "http://127.0.0.1:8000/analyze-route";
+    const BACKEND_URL = "http://127.0.0.1:8000/recommend-routes";
 
     const map = L.map("map").setView([21.1458, 79.0882], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -242,52 +242,13 @@
     let destinationPoint = null;
     let startMarker = null;
     let destinationMarker = null;
-    let routeLine = null;
+    let routeLines = [];
 
     function setStatus(message) {
       const statusText = document.getElementById("statusText");
       if (statusText) {
         statusText.textContent = message;
       }
-    }
-
-    function clearMapSelection() {
-      if (startMarker) {
-        map.removeLayer(startMarker);
-        startMarker = null;
-      }
-      if (destinationMarker) {
-        map.removeLayer(destinationMarker);
-        destinationMarker = null;
-      }
-      if (routeLine) {
-        map.removeLayer(routeLine);
-        routeLine = null;
-      }
-      startPoint = null;
-      destinationPoint = null;
-      setStatus("Select Start location");
-      const panel = document.getElementById("resultPanel");
-      panel.innerHTML = `
-        <h2 class="result-title">Route Analysis</h2>
-        <div class="result-grid">
-          <div class="result-item"><span class="label">Status</span><span id="statusText">Select Start location</span></div>
-        </div>
-      `;
-
-      const statsPanel = document.getElementById("statsPanel");
-      statsPanel.innerHTML = `
-        <h2 class="result-title">Route Details</h2>
-        <div class="result-grid">
-          <div class="result-item"><span class="label">Distance</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Temperature</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Base ETA</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Traffic ETA</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Adjusted ETA</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Traffic Speed</span><span>N/A</span></div>
-          <div class="result-item"><span class="label">Weather</span><span>N/A</span></div>
-        </div>
-      `;
     }
 
     function markerColorByLabel(label) {
@@ -305,7 +266,7 @@
       }).addTo(map).bindPopup(title);
     }
 
-    function getRiskColor(risk) {
+    function riskColor(risk) {
       if (risk === "HIGH") {
         return "#ef4444";
       }
@@ -313,6 +274,47 @@
         return "#facc15";
       }
       return "#22c55e";
+    }
+
+    function delayLabel(delay) {
+      return Number(delay) === 1 ? "Delayed" : "On Time";
+    }
+
+    function clearMapSelection() {
+      if (startMarker) {
+        map.removeLayer(startMarker);
+        startMarker = null;
+      }
+      if (destinationMarker) {
+        map.removeLayer(destinationMarker);
+        destinationMarker = null;
+      }
+      routeLines.forEach((line) => map.removeLayer(line));
+      routeLines = [];
+
+      startPoint = null;
+      destinationPoint = null;
+      setStatus("Select Start location");
+
+      const panel = document.getElementById("resultPanel");
+      panel.innerHTML = `
+        <h2 class="result-title">Route Analysis</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Select Start location</span></div>
+        </div>
+      `;
+
+      const statsPanel = document.getElementById("statsPanel");
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Route Details</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Distance</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Base ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic ETA</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>N/A</span></div>
+          <div class="result-item"><span class="label">ETA Ratio</span><span>N/A</span></div>
+        </div>
+      `;
     }
 
     async function analyzeRoute(startLat, startLon, endLat, endLon) {
@@ -337,46 +339,12 @@
       return response.json();
     }
 
-    function delayLabel(delay) {
-      return Number(delay) === 1 ? "Delayed" : "On Time";
-    }
-
-    function demandLabel(demand) {
-      if (Number(demand) < 1.8) {
-        return "Low";
-      }
-      if (Number(demand) < 2.3) {
-        return "Medium";
-      }
-      return "High";
-    }
-
-    function riskColor(risk) {
-      if (risk === "HIGH") {
-        return "#ef4444";
-      }
-      if (risk === "MEDIUM") {
-        return "#facc15";
-      }
-      return "#22c55e";
-    }
-
-    function riskInsight(risk) {
-      if (risk === "HIGH") {
-        return "High delay risk due to traffic and demand.";
-      }
-      if (risk === "MEDIUM") {
-        return "Moderate risk. Keep a small buffer in dispatch timing.";
-      }
-      return "Route is clear with low delay risk.";
-    }
-
     function renderLoading() {
       const panel = document.getElementById("resultPanel");
       panel.innerHTML = `
         <h2 class="result-title">Route Analysis</h2>
         <div class="result-grid">
-          <div class="result-item"><span class="label">Status</span><span id="statusText">Analyzing route...</span></div>
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Analyzing 2-3 route options...</span></div>
         </div>
       `;
 
@@ -384,7 +352,7 @@
       statsPanel.innerHTML = `
         <h2 class="result-title">Route Details</h2>
         <div class="result-grid">
-          <div class="result-item"><span class="label">Status</span><span>Fetching live metrics...</span></div>
+          <div class="result-item"><span class="label">Status</span><span>Fetching route alternatives...</span></div>
         </div>
       `;
     }
@@ -397,48 +365,87 @@
       return `${number.toFixed(decimals)}${suffix}`;
     }
 
-    function renderRouteStats(data) {
-      const statsPanel = document.getElementById("statsPanel");
-
-      const distance = formatNumber(data.distance_km, " km", 2);
-      const temperature = formatNumber(data.temperature, " °C", 1);
-      const baseEta = formatNumber(data.estimated_time_min, " min", 2);
-      const trafficEta = formatNumber(data.traffic_time_min, " min", 2);
-      const adjustedEta = formatNumber(data.final_time_min, " min", 2);
-      const trafficSpeed = formatNumber(data.traffic_speed, " km/h", 1);
-      const weather = data.weather || "N/A";
-
-      statsPanel.innerHTML = `
-        <h2 class="result-title">Route Details</h2>
-        <div class="result-grid">
-          <div class="result-item"><span class="label">Distance</span><span>${distance}</span></div>
-          <div class="result-item"><span class="label">Temperature</span><span>${temperature}</span></div>
-          <div class="result-item"><span class="label">Base ETA</span><span>${baseEta}</span></div>
-          <div class="result-item"><span class="label">Traffic ETA</span><span>${trafficEta}</span></div>
-          <div class="result-item"><span class="label">Adjusted ETA</span><span>${adjustedEta}</span></div>
-          <div class="result-item"><span class="label">Traffic Speed</span><span>${trafficSpeed}</span></div>
-          <div class="result-item"><span class="label">Weather</span><span>${weather}</span></div>
-        </div>
-      `;
+    function findRecommendedRoute(data) {
+      if (!data || !Array.isArray(data.routes) || !data.routes.length) {
+        return null;
+      }
+      return data.routes.find((route) => route.id === data.recommended_route_id) || data.routes[0];
     }
 
     function renderResults(data) {
-      const delayStatus = delayLabel(data.delay);
-      const demand = demandLabel(data.demand);
-      const confidence = Math.round((Number(data.confidence) || 0) * 100);
-      const risk = String(data.risk_level || "LOW").toUpperCase();
+      const recommended = findRecommendedRoute(data);
+      if (!recommended) {
+        renderError("No routes returned by backend.");
+        return;
+      }
+
+      const delayStatus = delayLabel(recommended.delay);
+      const confidence = Math.round((Number(recommended.confidence) || 0) * 100);
+      const risk = String(recommended.risk || "LOW").toUpperCase();
       const color = riskColor(risk);
+      const eta = formatNumber(recommended.traffic_eta, " min", 1);
+      const speed = formatNumber(recommended.traffic_speed, " km/h", 1);
+      const explanation = data.explanation || "Recommended route because it has lower traffic, higher speed, and minimal delay risk.";
 
       const panel = document.getElementById("resultPanel");
       panel.innerHTML = `
         <h2 class="result-title">Route Analysis</h2>
         <div class="result-grid">
+          <div class="result-item"><span class="label">Recommended Route</span><span>${data.recommended_route_id} ✅</span></div>
           <div class="result-item"><span class="label">Delay Status</span><span>${delayStatus}</span></div>
-          <div class="result-item"><span class="label">Demand Level</span><span>${demand}</span></div>
           <div class="result-item"><span class="label">Confidence</span><span>${confidence}%</span></div>
           <div class="result-item"><span class="label">Risk Level</span><span class="status-pill" style="background:${color}">${risk}</span></div>
+          <div class="result-item"><span class="label">ETA</span><span>${eta}</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>${speed}</span></div>
         </div>
-        <div class="insight">${riskInsight(risk)}</div>
+        <div class="insight">${explanation}</div>
+      `;
+    }
+
+    function renderRouteStats(data) {
+      const statsPanel = document.getElementById("statsPanel");
+      const recommended = findRecommendedRoute(data);
+
+      if (!recommended) {
+        statsPanel.innerHTML = `
+          <h2 class="result-title">Route Details</h2>
+          <div class="result-grid">
+            <div class="result-item"><span class="label">Status</span><span>No route metrics available</span></div>
+          </div>
+        `;
+        return;
+      }
+
+      const distance = formatNumber(recommended.distance, " km", 2);
+      const baseEta = formatNumber(recommended.base_eta, " min", 2);
+      const trafficEta = formatNumber(recommended.traffic_eta, " min", 2);
+      const trafficSpeed = formatNumber(recommended.traffic_speed, " km/h", 1);
+      const etaRatio = formatNumber(recommended.eta_ratio, "", 2);
+      const risk = String(recommended.risk || "LOW").toUpperCase();
+      const riskBadgeColor = riskColor(risk);
+
+      const comparativeRows = data.routes.map((route) => {
+        const isBest = route.id === data.recommended_route_id;
+        const label = isBest ? `${route.id} (Best)` : route.id;
+        const etaText = Number(route.traffic_eta || 0).toFixed(1);
+        const scoreText = Number(route.score || 0).toFixed(2);
+        const routeRisk = String(route.risk || "LOW").toUpperCase();
+        return `<div class="result-item"><span class="label">${label}</span><span>ETA ${etaText}m | Risk ${routeRisk} | Score ${scoreText}</span></div>`;
+      }).join("");
+
+      statsPanel.innerHTML = `
+        <h2 class="result-title">Recommended Route Metrics</h2>
+        <div class="result-grid">
+          <div class="result-item"><span class="label">Route ID</span><span>${recommended.id}</span></div>
+          <div class="result-item"><span class="label">Distance</span><span>${distance}</span></div>
+          <div class="result-item"><span class="label">Base ETA</span><span>${baseEta}</span></div>
+          <div class="result-item"><span class="label">Traffic ETA</span><span>${trafficEta}</span></div>
+          <div class="result-item"><span class="label">Traffic Speed</span><span>${trafficSpeed}</span></div>
+          <div class="result-item"><span class="label">ETA Ratio</span><span>${etaRatio}</span></div>
+          <div class="result-item"><span class="label">Risk</span><span class="status-pill" style="background:${riskBadgeColor}">${risk}</span></div>
+          <div class="result-item"><span class="label">Alternatives Compared</span><span>${data.routes.length}</span></div>
+          ${comparativeRows}
+        </div>
       `;
     }
 
@@ -447,7 +454,7 @@
       panel.innerHTML = `
         <h2 class="result-title">Route Analysis</h2>
         <div class="result-grid">
-          <div class="result-item"><span class="label">Status</span><span id="statusText">Failed to analyze route</span></div>
+          <div class="result-item"><span class="label">Status</span><span id="statusText">Failed to analyze routes</span></div>
         </div>
         <div class="insight">${message}</div>
       `;
@@ -461,37 +468,65 @@
       `;
     }
 
+    function routeColor(route, recommendedRouteId) {
+      if (route.id === recommendedRouteId) {
+        return "#22c55e";
+      }
+
+      const risk = String(route.risk || "MEDIUM").toUpperCase();
+      if (risk === "HIGH") {
+        return "#ef4444";
+      }
+      return "#9ca3af";
+    }
+
     function drawRoutePolyline(data) {
-      if (routeLine) {
-        map.removeLayer(routeLine);
-        routeLine = null;
-      }
+      routeLines.forEach((line) => map.removeLayer(line));
+      routeLines = [];
 
-      let path = null;
-      if (Array.isArray(data.route_path) && data.route_path.length > 1) {
-        path = data.route_path;
-      } else if (startPoint && destinationPoint) {
-        path = [
-          [startPoint.lat, startPoint.lon],
-          [destinationPoint.lat, destinationPoint.lon]
-        ];
-      }
-
-      if (!path) {
+      if (!Array.isArray(data.routes) || !data.routes.length) {
         return;
       }
 
-      const risk = String(data.risk_level || "LOW").toUpperCase();
-      routeLine = L.polyline(path, {
-        color: riskColor(risk),
-        weight: 5,
-        opacity: 0.85,
-        lineJoin: "round"
-      }).addTo(map);
+      const allBounds = [];
+      data.routes.forEach((route) => {
+        let path = null;
+        if (Array.isArray(route.route_path) && route.route_path.length > 1) {
+          path = route.route_path;
+        } else if (startPoint && destinationPoint) {
+          path = [
+            [startPoint.lat, startPoint.lon],
+            [destinationPoint.lat, destinationPoint.lon]
+          ];
+        }
 
-      const bounds = routeLine.getBounds();
-      if (bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.15));
+        if (!path) {
+          return;
+        }
+
+        const isBest = route.id === data.recommended_route_id;
+        const line = L.polyline(path, {
+          color: routeColor(route, data.recommended_route_id),
+          weight: isBest ? 7 : 4,
+          opacity: isBest ? 0.95 : 0.7,
+          lineJoin: "round"
+        }).addTo(map);
+
+        line.bindPopup(`${route.id}${isBest ? " (Recommended)" : ""}<br>Score: ${Number(route.score || 0).toFixed(2)}<br>Risk: ${String(route.risk || "LOW").toUpperCase()}`);
+        routeLines.push(line);
+
+        const bounds = line.getBounds();
+        if (bounds.isValid()) {
+          allBounds.push(bounds);
+        }
+      });
+
+      if (allBounds.length) {
+        let fitBounds = allBounds[0];
+        for (let i = 1; i < allBounds.length; i += 1) {
+          fitBounds = fitBounds.extend(allBounds[i]);
+        }
+        map.fitBounds(fitBounds.pad(0.15));
       }
     }
 
@@ -500,7 +535,7 @@
         return;
       }
 
-      setStatus("Analyzing route...");
+      setStatus("Analyzing route options...");
       renderLoading();
 
       try {
@@ -508,10 +543,10 @@
         drawRoutePolyline(data);
         renderResults(data);
         renderRouteStats(data);
-        setStatus("Analysis complete");
+        setStatus("Recommendation complete");
       } catch (error) {
-        renderError(error.message || "Failed to analyze route");
-        setStatus("Failed to analyze route");
+        renderError(error.message || "Failed to analyze routes");
+        setStatus("Failed to analyze route options");
       }
     }
 
