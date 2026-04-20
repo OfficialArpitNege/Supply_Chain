@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from Backend.services.feature_builder import prepare_demand_input
 from Backend.services.model_service import predict_demand as predict_demand_hybrid
 from Backend.utils.helpers import to_model_dict
 
@@ -22,8 +21,7 @@ class DemandResponse(BaseModel):
 def predict_demand(payload: DemandRequest) -> DemandResponse:
     try:
         data = to_model_dict(payload)
-        features = prepare_demand_input(data)
-        result = predict_demand_hybrid(features, data)
+        result = predict_demand_hybrid(data)
         return DemandResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

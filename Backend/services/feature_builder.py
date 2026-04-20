@@ -81,6 +81,7 @@ def build_demand_features(data: Dict[str, Any]) -> List[Any]:
         data.get("product_id", 0),
         data.get("category", "General"),
         data.get("month", 1),
+        data.get("day", 1),
         data.get("weekday", 0),
     ]
 
@@ -94,6 +95,7 @@ def prepare_demand_input(data: Dict[str, Any]) -> List[Any]:
         raw = str(payload["order_date"]).strip().split("T", 1)[0]
         dt = datetime.strptime(raw, "%Y-%m-%d")
         payload["month"] = dt.month
+        payload["day"] = dt.day
         payload["weekday"] = dt.weekday()
 
     return build_demand_features(payload)

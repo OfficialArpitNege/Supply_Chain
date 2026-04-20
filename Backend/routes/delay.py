@@ -1,9 +1,8 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 
-from Backend.services.feature_builder import prepare_delay_input
 from Backend.services.model_service import predict_delay as predict_delay_hybrid
 from Backend.services.preprocessing import preprocess
 from Backend.utils.helpers import to_model_dict
@@ -14,13 +13,13 @@ router = APIRouter(tags=["delay"])
 class DelayRequest(BaseModel):
     Agent_Age: int = Field(..., ge=18, le=80)
     Agent_Rating: float = Field(..., ge=0.0, le=5.0)
-    weather: Optional[str] = Field(default=None)
-    traffic: Optional[str] = Field(default=None)
-    vehicle: Optional[str] = Field(default=None)
-    area: Optional[str] = Field(default=None)
+    weather: Optional[str] = Field(default=None, validation_alias=AliasChoices("weather", "Weather"))
+    traffic: Optional[str] = Field(default=None, validation_alias=AliasChoices("traffic", "Traffic"))
+    vehicle: Optional[str] = Field(default=None, validation_alias=AliasChoices("vehicle", "Vehicle"))
+    area: Optional[str] = Field(default=None, validation_alias=AliasChoices("area", "Area"))
     distance: Optional[float] = Field(default=None, ge=0.0)
-    hour_of_day: Optional[int] = Field(default=None, ge=0, le=23)
-    weekday: Optional[int] = Field(default=None, ge=0, le=6)
+    hour_of_day: Optional[int] = Field(default=None, ge=0, le=23, validation_alias=AliasChoices("hour_of_day", "Hour_of_Day"))
+    weekday: Optional[int] = Field(default=None, ge=0, le=6, validation_alias=AliasChoices("weekday", "Weekday"))
     timestamp: Optional[str] = Field(default=None)
     temperature_C: Optional[float] = Field(default=None)
     start_lat: Optional[float] = Field(default=None, ge=-90, le=90)
@@ -38,8 +37,7 @@ class DelayResponse(BaseModel):
 def predict_delay(payload: DelayRequest) -> DelayResponse:
     try:
         processed = preprocess(to_model_dict(payload))
-        features = prepare_delay_input(processed)
-        result = predict_delay_hybrid(features, processed)
+        result = predict_delay_hybrid(processed)
         return DelayResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

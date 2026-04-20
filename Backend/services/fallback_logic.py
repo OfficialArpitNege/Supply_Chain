@@ -72,13 +72,16 @@ def predict_demand_fallback(payload: Dict[str, object]) -> Dict[str, float]:
 def predict_delay_fallback(payload: Dict[str, object]) -> Dict[str, float]:
     agent_age = int(payload["Agent_Age"])
     agent_rating = float(payload["Agent_Rating"])
-    weather = normalize_weather(str(payload.get("weather", "")))
-    traffic = normalize_traffic(str(payload.get("traffic", "")))
-    vehicle = normalize_vehicle(str(payload.get("vehicle", "")))
-    area = normalize_text(str(payload.get("area", ""))).title()
+    weather = normalize_weather(str(payload.get("weather", payload.get("Weather", ""))))
+    traffic = normalize_traffic(str(payload.get("traffic", payload.get("Traffic", ""))))
+    vehicle = normalize_vehicle(str(payload.get("vehicle", payload.get("Vehicle", ""))))
+    area_value = payload.get("area", payload.get("Area", "Urban"))
+    area = normalize_text(str(area_value)).title()
     distance = float(payload["distance"])
-    hour_of_day = int(payload["hour_of_day"])
-    weekday = int(payload["weekday"])
+    hour_value = payload.get("hour_of_day", 12)
+    weekday_value = payload.get("weekday", 0)
+    hour_of_day = 12 if hour_value in (None, "") else int(hour_value)
+    weekday = 0 if weekday_value in (None, "") else int(weekday_value)
 
     score = 0.18
 
