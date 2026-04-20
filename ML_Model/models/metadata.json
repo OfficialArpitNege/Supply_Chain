@@ -1,0 +1,20 @@
+{
+  "delay_model_v2": "models/delay_model_v2.pkl",
+  "delay_model_final": "models/delay_model_final.pkl",
+  "demand_model_v2": "models/demand_model_v2.pkl",
+  "demand_model_final": "models/demand_model_final.pkl",
+  "encoders": "models/encoders.pkl",
+  "scaler": "models/scaler.pkl",
+  "delay_threshold": "models/delay_threshold.pkl",
+  "threshold_value": 0.3,
+  "encoders_included": [
+    "Weather",
+    "Traffic",
+    "Vehicle",
+    "Area",
+    "weather_condition",
+    "season",
+    "category"
+  ],
+  "status": "production_ready"
+}
