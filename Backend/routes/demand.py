@@ -13,8 +13,13 @@ class DemandRequest(BaseModel):
     order_date: str = Field(..., min_length=1)
 
 
+
 class DemandResponse(BaseModel):
-    predicted_demand: float
+    demand_level: str
+    ml_score: float
+    active_deliveries: int
+    final_score: float
+
 
 
 @router.post("/predict-demand", response_model=DemandResponse)
@@ -22,6 +27,12 @@ def predict_demand(payload: DemandRequest) -> DemandResponse:
     try:
         data = to_model_dict(payload)
         result = predict_demand_hybrid(data)
-        return DemandResponse(**result)
+        # Defensive: fill all fields
+        return DemandResponse(
+            demand_level=result.get("demand_level", "LOW"),
+            ml_score=result.get("ml_score", 1.0),
+            active_deliveries=result.get("active_deliveries", -1),
+            final_score=result.get("final_score", 1.0),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

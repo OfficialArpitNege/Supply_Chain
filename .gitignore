@@ -205,3 +205,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# environment
+.env
+
+# firebase secrets
+firebase_key.json
+*.json
+
+# python
+__pycache__/
+.venv311/
+venv/
+
+# system
+.DS_Store
+
+# build
+dist/
+build/

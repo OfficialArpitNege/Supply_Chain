@@ -181,6 +181,51 @@
 
       #map { height: calc(100vh - 290px); }
     }
+
+    .delivery-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .delivery-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+
+    .delivery-card .header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .delivery-card .id {
+      color: var(--muted);
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    .delivery-card .actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+    }
+
+    .status-waiting { color: #facc15; }
+    .status-active { color: #22c55e; }
+    .status-completed { color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -198,6 +243,7 @@
 
       <div class="controls">
         <button id="resetBtn" class="btn" type="button">Reset Selection</button>
+        <button class="btn btn-outline" style="background:transparent; border:1px solid rgba(255,255,255,0.2);" onclick="window.location.href='/static/admin_dashboard.html'">Go to Admin Dashboard</button>
       </div>
 
       <div class="hint">Backend endpoint: http://127.0.0.1:8000/recommend-routes</div>
@@ -221,6 +267,21 @@
           <div class="result-item"><span class="label">Weather</span><span>N/A</span></div>
         </div>
       </div>
+
+      <div class="result-card" style="margin-top: 24px;">
+        <h2 class="result-title">Route Comparison</h2>
+        <canvas id="radarChart" width="280" height="280" style="width:100%;max-width:280px;margin:0 auto;display:block;"></canvas>
+        <div id="radarLegend" style="font-size:0.72rem;text-align:center;margin-top:8px;color:#94a3b8;"></div>
+      </div>
+
+      <div class="result-card" style="margin-top: 24px;">
+        <h2 class="result-title">System Load (Real-time)</h2>
+        <div class="result-grid" id="demandPanel">
+          <div class="result-item"><span class="label">Status</span><span>Connecting...</span></div>
+          <div class="result-item"><span class="label">Active Deliveries</span><span>-</span></div>
+        </div>
+        <div id="demandInsight" class="insight" style="font-size: 0.85rem; margin-top: 10px; display: none;"></div>
+      </div>
     </aside>
   </div>
 
@@ -230,7 +291,9 @@
     crossorigin=""
   ></script>
   <script>
-    const BACKEND_URL = "http://127.0.0.1:8000/recommend-routes";
+    const DELIVERIES_URL = "http://127.0.0.1:8000/deliveries";
+    let lastAnalysisData = null;
+    let selectedRouteId = null;
 
     const map = L.map("map").setView([21.1458, 79.0882], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -399,8 +462,13 @@
           <div class="result-item"><span class="label">Traffic Speed</span><span>${speed}</span></div>
         </div>
         <div class="insight">${explanation}</div>
+        <button id="createDeliveryBtn" class="btn" style="width: 100%; margin-top: 14px; background: #059669;">Initialize Delivery Request</button>
       `;
+
+      document.getElementById("createDeliveryBtn").addEventListener("click", () => submitDeliveryRequest(data));
     }
+
+
 
     function renderRouteStats(data) {
       const statsPanel = document.getElementById("statsPanel");
@@ -426,11 +494,18 @@
 
       const comparativeRows = data.routes.map((route) => {
         const isBest = route.id === data.recommended_route_id;
-        const label = isBest ? `${route.id} (Best)` : route.id;
-        const etaText = Number(route.traffic_eta || 0).toFixed(1);
-        const scoreText = Number(route.score || 0).toFixed(2);
+        const isSelected = route.id === (selectedRouteId || data.recommended_route_id);
+        const label = isBest ? `${route.id} (Optimal)` : route.id;
+        const etaText = Number(route.traffic_eta || 0).toFixed(0);
         const routeRisk = String(route.risk || "LOW").toUpperCase();
-        return `<div class="result-item"><span class="label">${label}</span><span>ETA ${etaText}m | Risk ${routeRisk} | Score ${scoreText}</span></div>`;
+        const color = isSelected ? '#2563eb' : '#94a3b8';
+        
+        return `
+          <div class="result-item" style="cursor:pointer; padding:8px; border-radius:8px; transition:all; background:${isSelected ? 'rgba(37,99,235,0.1)' : 'transparent'}; border:1px solid ${isSelected ? '#2563eb' : 'transparent'}" 
+               onclick="selectRoute('${route.id}')">
+            <span class="label" style="color:${isSelected ? '#fff' : '#94a3b8'}; font-weight:${isSelected ? '700' : '400'}">${label}</span>
+            <span>ETA ${etaText}m | ${routeRisk}</span>
+          </div>`;
       }).join("");
 
       statsPanel.innerHTML = `
@@ -447,6 +522,9 @@
           ${comparativeRows}
         </div>
       `;
+
+      // Draw radar chart
+      drawRadarChart(data.routes, data.recommended_route_id);
     }
 
     function renderError(message) {
@@ -480,53 +558,47 @@
       return "#9ca3af";
     }
 
-    function drawRoutePolyline(data) {
+    function selectRoute(routeId) {
+      selectedRouteId = routeId;
+      if (lastAnalysisData) {
+        drawRoutePolyline(lastAnalysisData, routeId);
+        renderRouteStats(lastAnalysisData, routeId);
+      }
+    }
+
+    function drawRoutePolyline(data, selectedId = null) {
       routeLines.forEach((line) => map.removeLayer(line));
       routeLines = [];
+      const currentSelected = selectedId || data.recommended_route_id;
 
-      if (!Array.isArray(data.routes) || !data.routes.length) {
-        return;
-      }
+      data.routes.forEach((route, idx) => {
+        let path = (Array.isArray(route.route_path) && route.route_path.length > 2) ? route.route_path : null;
+        if (!path) return;
 
-      const allBounds = [];
-      data.routes.forEach((route) => {
-        let path = null;
-        if (Array.isArray(route.route_path) && route.route_path.length > 1) {
-          path = route.route_path;
-        } else if (startPoint && destinationPoint) {
-          path = [
-            [startPoint.lat, startPoint.lon],
-            [destinationPoint.lat, destinationPoint.lon]
-          ];
-        }
-
-        if (!path) {
-          return;
-        }
-
+        const isSelected = route.id === currentSelected;
         const isBest = route.id === data.recommended_route_id;
+        
+        // Use a color spectrum: Blue for 1, Green for 2, Red for 3
+        const spectrum = ['#2563eb', '#22c55e', '#ef4444'];
+        const baseColor = spectrum[idx % 3];
+        
         const line = L.polyline(path, {
-          color: routeColor(route, data.recommended_route_id),
-          weight: isBest ? 7 : 4,
-          opacity: isBest ? 0.95 : 0.7,
+          color: isSelected ? baseColor : `${baseColor}44`,
+          weight: isSelected ? 8 : 4,
+          opacity: isSelected ? 1 : 0.6,
+          dashArray: isSelected ? "" : "8, 12",
           lineJoin: "round"
         }).addTo(map);
 
-        line.bindPopup(`${route.id}${isBest ? " (Recommended)" : ""}<br>Score: ${Number(route.score || 0).toFixed(2)}<br>Risk: ${String(route.risk || "LOW").toUpperCase()}`);
+        line.bindPopup(`<b>Corridor ${idx+1}</b><br>ETA: ${route.traffic_eta.toFixed(0)}m`);
+        line.on('click', () => selectRoute(route.id));
         routeLines.push(line);
-
-        const bounds = line.getBounds();
-        if (bounds.isValid()) {
-          allBounds.push(bounds);
-        }
       });
-
-      if (allBounds.length) {
-        let fitBounds = allBounds[0];
-        for (let i = 1; i < allBounds.length; i += 1) {
-          fitBounds = fitBounds.extend(allBounds[i]);
-        }
-        map.fitBounds(fitBounds.pad(0.15));
+      
+      // Auto-fit bounds if first time
+      if (!selectedId) {
+         const group = L.featureGroup(routeLines);
+         if (group.getBounds().isValid()) map.fitBounds(group.getBounds().pad(0.1));
       }
     }
 
@@ -577,6 +649,240 @@
     });
 
     document.getElementById("resetBtn").addEventListener("click", clearMapSelection);
+
+    // ── Radar Chart ──
+    function drawRadarChart(routes, bestId) {
+      const canvas = document.getElementById('radarChart');
+      if (!canvas || !routes || !routes.length) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 30;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const axes = ['Speed', 'Score', 'Low Delay', 'Short Dist', 'Low Congest'];
+      const N = axes.length;
+      const angleStep = (2 * Math.PI) / N;
+
+      // Normalize values across routes
+      const maxSpeed = Math.max(...routes.map(r => r.traffic_speed || 1));
+      const maxScore = Math.max(...routes.map(r => r.score || 1));
+      const maxDist = Math.max(...routes.map(r => r.distance || 1));
+      const maxEtaRatio = Math.max(...routes.map(r => r.eta_ratio || 1));
+
+      function getValues(r) {
+        return [
+          (r.traffic_speed || 0) / maxSpeed,
+          (r.score || 0) / maxScore,
+          1 - (r.probability_delayed || 0),
+          1 - ((r.distance || 0) / maxDist),
+          1 - (((r.eta_ratio || 1) - 1) / Math.max(maxEtaRatio - 1, 0.1)),
+        ];
+      }
+
+      // Draw grid rings
+      for (let ring = 1; ring <= 4; ring++) {
+        const rr = (R * ring) / 4;
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+          const a = i * angleStep - Math.PI / 2;
+          const x = cx + rr * Math.cos(a);
+          const y = cy + rr * Math.sin(a);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.stroke();
+      }
+
+      // Draw axis lines + labels
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < N; i++) {
+        const a = i * angleStep - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.stroke();
+        const lx = cx + (R + 18) * Math.cos(a);
+        const ly = cy + (R + 18) * Math.sin(a);
+        ctx.fillText(axes[i], lx, ly + 3);
+      }
+
+      // Draw each route
+      const colors = ['#22c55e', '#3b82f6', '#ef4444', '#f59e0b'];
+      let legendHtml = '';
+      routes.forEach((route, idx) => {
+        const vals = getValues(route);
+        const isBest = route.id === bestId;
+        const color = isBest ? '#22c55e' : colors[idx % colors.length];
+
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+          const vi = i % N;
+          const a = vi * angleStep - Math.PI / 2;
+          const v = Math.max(vals[vi], 0.05);
+          const x = cx + R * v * Math.cos(a);
+          const y = cy + R * v * Math.sin(a);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isBest ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.fillStyle = color.replace(')', ',0.08)').replace('rgb', 'rgba').replace('#', '');
+        // Simple alpha fill
+        ctx.globalAlpha = isBest ? 0.15 : 0.06;
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        legendHtml += `<span style="color:${color};margin:0 6px;">● ${route.id}${isBest ? ' (Best)' : ''}</span>`;
+      });
+
+      document.getElementById('radarLegend').innerHTML = legendHtml;
+    }
+
+    async function updateSystemDemand() {
+      try {
+        const resp = await fetch(DEMAND_URL);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        
+        const demandPanel = document.getElementById("demandPanel");
+        const demandInsight = document.getElementById("demandInsight");
+        
+        const count = data.active_deliveries;
+        let level = "LOW";
+        let color = "var(--low)";
+        let msg = "System operating at normal capacity.";
+        
+        if (count >= 20) {
+          level = "CRITICAL";
+          color = "var(--high)";
+          msg = "Maximum capacity reached. Delays highly likely.";
+        } else if (count >= 15) {
+          level = "HIGH";
+          color = "var(--high)";
+          msg = "High demand surge detected. Optimization required.";
+        } else if (count >= 8) {
+          level = "MEDIUM";
+          color = "var(--medium)";
+          msg = "Moderate load. System is busy but stable.";
+        } else if (count < 0) {
+          level = "OFFLINE";
+          color = "#6b7280";
+          msg = "Could not connect to Firebase.";
+        }
+
+        demandPanel.innerHTML = `
+          <div class="result-item"><span class="label">System Status</span><span class="status-pill" style="background:${color}">${level}</span></div>
+          <div class="result-item"><span class="label">Active Deliveries</span><span style="font-weight:700; color:${color}">${count >= 0 ? count : 'Error'}</span></div>
+        `;
+        
+        demandInsight.style.display = "block";
+        demandInsight.textContent = msg;
+        
+      } catch (err) {
+        console.error("Demand poll error:", err);
+      }
+    }
+
+    // Start polling every 3 seconds
+    setInterval(updateSystemDemand, 3000);
+    updateSystemDemand();
+
+    // Delivery Management Logic
+    async function submitDeliveryRequest(data) {
+      if (!startPoint || !destinationPoint) return;
+      
+      const btn = document.getElementById("createDeliveryBtn");
+      btn.disabled = true;
+      btn.textContent = "Storing in Firebase...";
+
+      try {
+        const payload = {
+          start_location: { lat: startPoint.lat, lon: startPoint.lon },
+          end_location: { lat: destinationPoint.lat, lon: destinationPoint.lon }
+        };
+
+        const resp = await fetch(`${DELIVERIES_URL}/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) throw new Error("Failed to create delivery");
+        
+        btn.textContent = "Delivery Created! ✅";
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = "Initialize Delivery Request";
+        }, 2000);
+
+        fetchDeliveries();
+      } catch (err) {
+        console.error(err);
+        btn.textContent = "Failed to Create ❌";
+        btn.disabled = false;
+      }
+    }
+
+    async function fetchDeliveries() {
+      try {
+        const resp = await fetch(DELIVERIES_URL);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderDeliveryBoard(data);
+      } catch (err) {
+        console.error("Fetch deliveries error:", err);
+      }
+    }
+
+    function renderDeliveryBoard(deliveries) {
+      const board = document.getElementById("deliveryBoard");
+      if (!deliveries.length) {
+        board.innerHTML = '<p style="text-align:center; color:var(--muted);">No deliveries in system.</p>';
+        return;
+      }
+
+      board.innerHTML = deliveries.map(d => {
+        const date = new Date(d.created_at).toLocaleTimeString();
+        let actionBtn = "";
+        
+        if (d.status === "waiting") {
+          actionBtn = `<button class="btn btn-small" style="background:#2563eb" onclick="updateDeliveryStatus('${d.delivery_id}', 'start')">Start</button>`;
+        } else if (d.status === "active") {
+          actionBtn = `<button class="btn btn-small" style="background:#059669" onclick="updateDeliveryStatus('${d.delivery_id}', 'complete')">Complete</button>`;
+        }
+
+        return `
+          <div class="delivery-card">
+            <div class="header">
+              <span class="status-${d.status}">${d.status.toUpperCase()}</span>
+              <span style="font-size:0.7rem; color:var(--muted);">${date}</span>
+            </div>
+            <div class="id">ID: ${d.delivery_id.substring(0,8)}...</div>
+            <div style="margin-top:4px;">${d.selected_route.route_id} | ${d.selected_route.distance}km | ${d.risk_level} Risk</div>
+            <div class="actions">${actionBtn}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function updateDeliveryStatus(id, action) {
+      try {
+        const resp = await fetch(`${DELIVERIES_URL}/${id}/${action}`, { method: "POST" });
+        if (resp.ok) fetchDeliveries();
+      } catch (err) {
+        console.error(`Error ${action}ing delivery:`, err);
+      }
+    }
+
+    // Initial fetch and poll
+    fetchDeliveries();
+    setInterval(fetchDeliveries, 5000);
   </script>
 </body>
 </html>

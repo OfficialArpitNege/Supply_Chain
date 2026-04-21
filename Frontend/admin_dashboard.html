@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainControl | Smart Supply Chain Command Center</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --surface: #111827;
+            --card: #1a2236;
+            --card-hover: #1f2942;
+            --border: rgba(255, 255, 255, 0.07);
+            --accent: #3b82f6;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --purple: #8b5cf6;
+            --cyan: #06b6d4;
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --glow-blue: rgba(59, 130, 246, 0.15);
+            --glow-red: rgba(239, 68, 68, 0.15);
+            --glow-green: rgba(16, 185, 129, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ── Health Pulse Bar ── */
+        #pulseBar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--green);
+            z-index: 999;
+            transition: background 0.8s ease, box-shadow 0.8s ease;
+            box-shadow: 0 0 12px var(--green);
+        }
+
+        #pulseBar.moderate {
+            background: var(--yellow);
+            box-shadow: 0 0 12px var(--yellow);
+        }
+
+        #pulseBar.high {
+            background: var(--red);
+            box-shadow: 0 0 12px var(--red);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 240px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+            margin-top: 3px;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 28px;
+            padding: 0 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .nav-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: var(--glow-blue);
+            color: var(--accent);
+        }
+
+        .nav-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 16px 8px;
+        }
+
+        .nav-section-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+
+        /* ── Main ── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            margin-top: 3px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .top-bar h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* ── Stats ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            padding: 20px 24px;
+        }
+
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat:nth-child(1)::before {
+            background: var(--accent);
+        }
+
+        .stat:nth-child(2)::before {
+            background: var(--yellow);
+        }
+
+        .stat:nth-child(3)::before {
+            background: var(--red);
+        }
+
+        .stat:nth-child(4)::before {
+            background: var(--green);
+        }
+
+        .stat:nth-child(5)::before {
+            background: var(--purple);
+        }
+
+        .stat .label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat .value {
+            font-size: 1.6rem;
+            font-weight: 800;
+        }
+
+        .stat .sub {
+            font-size: 0.7rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 370px;
+            gap: 16px;
+            padding: 0 24px 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        /* ── Table ── */
+        .table-wrap {
+            overflow-y: auto;
+            max-height: 320px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 18px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--card);
+        }
+
+        td {
+            padding: 12px 18px;
+            font-size: 0.82rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: var(--card-hover);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-waiting {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--yellow);
+        }
+
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+        }
+
+        .badge-completed {
+            background: rgba(100, 116, 139, 0.1);
+            color: var(--muted);
+        }
+
+        .risk-high {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .risk-medium {
+            color: var(--yellow);
+            font-weight: 600;
+        }
+
+        .risk-low {
+            color: var(--green);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            color: white;
+        }
+
+        .btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-blue {
+            background: var(--accent);
+        }
+
+        .btn-green {
+            background: var(--green);
+        }
+
+        .btn-red {
+            background: var(--red);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        /* ── Right Panel ── */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        /* ── Decision Cards ── */
+        .decision {
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+        }
+
+        .decision-critical {
+            background: var(--glow-red);
+            border-color: var(--red);
+        }
+
+        .decision-warning {
+            background: rgba(245, 158, 11, 0.08);
+            border-color: var(--yellow);
+        }
+
+        .decision-info {
+            background: var(--glow-blue);
+            border-color: var(--accent);
+        }
+
+        .decision-success {
+            background: var(--glow-green);
+            border-color: var(--green);
+        }
+
+        .decision-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .decision-desc {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .decision-why {
+            font-size: 0.72rem;
+            color: var(--cyan);
+            padding: 6px 8px;
+            background: rgba(6, 182, 212, 0.06);
+            border-radius: 4px;
+            margin-top: 6px;
+        }
+
+        .decision-why::before {
+            content: "WHY: ";
+            font-weight: 700;
+        }
+
+        /* ── Notification Feed ── */
+        .feed {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .feed-item {
+            font-size: 0.75rem;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .feed-item.alert {
+            border-color: var(--red);
+            background: var(--glow-red);
+        }
+
+        .feed-item.warn {
+            border-color: var(--yellow);
+        }
+
+        .feed-item.ok {
+            border-color: var(--green);
+        }
+
+        .feed-time {
+            color: var(--muted);
+            font-size: 0.65rem;
+            white-space: nowrap;
+            margin-left: 8px;
+        }
+
+        /* ── Map ── */
+        #miniMap {
+            height: 200px;
+            border-radius: 8px;
+            margin: 12px;
+        }
+
+        /* ── Disruption Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            width: 440px;
+            max-width: 90vw;
+        }
+
+        .modal h3 {
+            margin-bottom: 16px;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+
+        /* ── Explainability popup ── */
+        .explain-row {
+            font-size: 0.72rem;
+            color: var(--cyan);
+            padding: 4px 0;
+        }
+
+        .explain-row::before {
+            content: "• ";
+        }
+
+        .perf-score {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .perf-good {
+            background: var(--glow-green);
+            color: var(--green);
+        }
+
+        .perf-ok {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--yellow);
+        }
+
+        .perf-bad {
+            background: var(--glow-red);
+            color: var(--red);
+        }
+
+        /* ── Resilience Gauge ── */
+        .resilience-gauge {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .gauge-ring {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 800;
+            position: relative;
+        }
+
+        .gauge-ring::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 4px solid var(--border);
+        }
+
+        .gauge-details {
+            flex: 1;
+        }
+
+        .gauge-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+
+        .gauge-label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ── What-If Results ── */
+        .whatif-impact {
+            font-size: 0.78rem;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .whatif-impact::before {
+            content: '→ ';
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        .whatif-action {
+            padding: 8px 10px;
+            margin-top: 6px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .priority-CRITICAL {
+            border-left: 3px solid var(--red);
+        }
+
+        .priority-HIGH {
+            border-left: 3px solid var(--yellow);
+        }
+
+        .priority-MEDIUM {
+            border-left: 3px solid var(--accent);
+        }
+
+        .priority-LOW {
+            border-left: 3px solid var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Health Pulse Bar -->
+    <div id="pulseBar"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">⚡ Chain<span>Control</span></div>
+
+        <div class="nav-section-label">Operations</div>
+        <div class="nav-item active">📊 Command Center</div>
+        <div class="nav-item" onclick="window.open('/static/index.html','_blank')">🗺️ Route Analysis</div>
+
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="openDisruptionModal()">⚡ Inject Disruption</div>
+        <div class="nav-item" onclick="openWhatIfModal()">🔮 What-If Simulator</div>
+        <div class="nav-item" onclick="fetchData()">🔄 Force Refresh</div>
+
+        <div style="flex:1"></div>
+        <div style="font-size:0.65rem; color:var(--muted); padding:8px;">
+            <div>Smart Supply Chain v2.0</div>
+            <div id="clockDisplay" style="margin-top:4px;"></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+        <div class="top-bar">
+            <h1>Command Center</h1>
+            <div class="top-actions">
+                <div id="liveIndicator"
+                    style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--green);">
+                    <div
+                        style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;">
+                    </div>
+                    LIVE
+                </div>
+                <button class="btn btn-red" onclick="openDisruptionModal()">⚡ Inject Disruption</button>
+                <button class="btn" style="background:var(--purple)" onclick="openWhatIfModal()">🔮 What-If</button>
+                <button class="btn btn-green" onclick="scaleFleet('scale_up')">🚛 +5 Agents</button>
+                <button class="btn btn-ghost" onclick="fetchData()">Refresh</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat">
+                <div class="label">Active Deliveries</div>
+                <div class="value" id="sActive">—</div>
+                <div class="sub" id="sActiveSub">loading</div>
+            </div>
+            <div class="stat">
+                <div class="label">System Demand</div>
+                <div class="value" id="sDemand">—</div>
+                <div class="sub" id="sDemandSub">loading</div>
+            </div>
+            <div class="stat">
+                <div class="label">Risk Level</div>
+                <div class="value" id="sRisk">—</div>
+                <div class="sub" id="sRiskSub">loading</div>
+            </div>
+            <div class="stat">
+                <div class="label">Fleet Utilization</div>
+                <div class="value" id="sFleet">—</div>
+                <div class="sub" id="sFleetSub">loading</div>
+                <div style="display:flex;gap:4px;margin-top:8px;">
+                    <button class="btn btn-green" style="padding:3px 8px;font-size:0.65rem;"
+                        onclick="scaleFleet('scale_up')">+5</button>
+                    <button class="btn btn-ghost" style="padding:3px 8px;font-size:0.65rem;"
+                        onclick="scaleFleet('scale_down')">-5</button>
+                    <button class="btn btn-ghost" style="padding:3px 8px;font-size:0.65rem;"
+                        onclick="scaleFleet('reset')">Reset</button>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="label">Avg Performance</div>
+                <div class="value" id="sPerf">—</div>
+                <div class="sub" id="sPerfSub">loading</div>
+            </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid">
+            <div class="left-col">
+                <!-- Delivery Table -->
+                <div class="card" style="flex:1;">
+                    <div class="card-header">
+                        <span class="card-title">📦 Delivery Stream</span>
+                        <span style="font-size:0.72rem;color:var(--muted);" id="tableCount">0 records</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Status</th>
+                                    <th>Route</th>
+                                    <th>Backup</th>
+                                    <th>Risk</th>
+                                    <th>Action</th>
+                                    <th>Controls</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliveryTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Notification Feed -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📡 Live Activity Feed</span>
+                        <button class="btn btn-ghost" style="font-size:0.7rem;" onclick="clearFeed()">Clear</button>
+                    </div>
+                    <div class="feed" id="feedPanel">
+                        <div class="feed-item ok"><span>System initialized — monitoring active</span><span
+                                class="feed-time">now</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="right-col">
+                <!-- Decision Engine -->
+                <div class="card" style="flex:1;overflow-y:auto;">
+                    <div class="card-header">
+                        <span class="card-title">🧠 Decision Engine</span>
+                        <span style="font-size:0.65rem;color:var(--cyan);">AI-POWERED</span>
+                    </div>
+                    <div style="padding:14px;" id="decisionPanel">
+                        <div class="decision decision-success">
+                            <div class="decision-title">Initializing...</div>
+                            <div class="decision-desc">Connecting to system intelligence layer.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resilience Score -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🛡️ Resilience Score</span>
+                        <span style="font-size:0.65rem;color:var(--green);" id="resGrade">—</span>
+                    </div>
+                    <div class="resilience-gauge" id="resPanel">
+                        <div class="gauge-ring" id="resRing" style="border:4px solid var(--green);">—</div>
+                        <div class="gauge-details" id="resDetails">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Mini Map -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🗺️ Route Overview</span>
+                    </div>
+                    <div id="miniMap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disruption Modal -->
+    <div class="modal-overlay" id="disruptModal">
+        <div class="modal">
+            <h3>⚡ Inject System Disruption</h3>
+            <p style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;">Simulate a real-world disruption to test
+                system resilience and observe the Decision Engine's response.</p>
+            <div class="form-group">
+                <label>Disruption Type</label>
+                <select id="disruptType">
+                    <option value="traffic_spike">🚗 Traffic Spike</option>
+                    <option value="weather_event">🌧️ Weather Event</option>
+                    <option value="road_closure">🚧 Road Closure</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Affected Route</label>
+                <select id="disruptRoute">
+                    <option value="route_1">Route 1</option>
+                    <option value="route_2">Route 2</option>
+                    <option value="route_3">Route 3</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Severity</label>
+                <select id="disruptSeverity">
+                    <option value="HIGH">🔴 HIGH</option>
+                    <option value="MEDIUM">🟡 MEDIUM</option>
+                    <option value="LOW">🟢 LOW</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn btn-red" style="flex:1;" onclick="executeDisruption()">🚨 Inject Disruption</button>
+                <button class="btn btn-ghost" onclick="closeDisruptionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- What-If Modal -->
+    <div class="modal-overlay" id="whatIfModal">
+        <div class="modal" style="width:560px;">
+            <h3>🔮 What-If Scenario Simulator</h3>
+            <p style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;">Test hypothetical scenarios to evaluate
+                system preparedness. No actual data is modified.</p>
+            <div class="form-group">
+                <label>Scenario</label>
+                <select id="whatIfScenario">
+                    <option value="demand_surge">📈 Demand Surge — What if demand doubles?</option>
+                    <option value="route_failure">🚧 Route Failure — What if a primary route goes down?</option>
+                    <option value="fleet_reduction">🚛 Fleet Reduction — What if fleet capacity halves?</option>
+                    <option value="weather_crisis">🌧️ Weather Crisis — What if severe weather hits?</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Intensity Multiplier</label>
+                <input type="number" id="whatIfMultiplier" value="2.0" min="1.0" max="5.0" step="0.5">
+            </div>
+            <div id="whatIfResults" style="display:none; margin-bottom:16px; max-height:280px; overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn" style="flex:1;background:var(--purple);" onclick="runWhatIf()">🔮 Run
+                    Simulation</button>
+                <button class="btn btn-ghost" onclick="closeWhatIfModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const API = "";
+        let miniMap = null;
+        let feedItems = [];
+        let previousDecisionCount = 0;
+
+        // ── Init ──
+        function init() {
+            miniMap = L.map('miniMap', { zoomControl: false, attributionControl: false }).setView([21.1458, 79.0882], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+            fetchData();
+            setInterval(fetchData, 4000);
+            setInterval(updateClock, 1000);
+            updateClock();
+        }
+
+        function updateClock() {
+            document.getElementById('clockDisplay').textContent = new Date().toLocaleTimeString();
+        }
+
+        // ── Fetch All Data ──
+        async function fetchData() {
+            try {
+                const [delResp, insResp, resResp] = await Promise.all([
+                    fetch(`${API}/deliveries`),
+                    fetch(`${API}/deliveries/insights`),
+                    fetch(`${API}/deliveries/resilience`),
+                ]);
+                const deliveries = await delResp.json();
+                const insights = await insResp.json();
+                const resilience = await resResp.json();
+
+                updatePulseBar(insights);
+                updateStats(insights);
+                renderTable(deliveries);
+                renderDecisions(insights);
+                renderResilience(resilience);
+                document.getElementById('tableCount').textContent = `${deliveries.length} records`;
+            } catch (err) {
+                console.error("Fetch error:", err);
+                addFeedItem("Connection error — retrying...", "alert");
+            }
+        }
+
+        // ── Pulse Bar ──
+        function updatePulseBar(ins) {
+            const bar = document.getElementById('pulseBar');
+            bar.className = '';
+            if (ins.demand_level === 'CRITICAL' || ins.demand_level === 'HIGH') bar.className = 'high';
+            else if (ins.demand_level === 'MODERATE') bar.className = 'moderate';
+        }
+
+        // ── Stats ──
+        function updateStats(ins) {
+            document.getElementById('sActive').textContent = ins.active_count;
+            document.getElementById('sActiveSub').textContent = `${ins.waiting_count} waiting · ${ins.completed_count} done`;
+
+            const demandColors = { CRITICAL: 'var(--red)', HIGH: 'var(--red)', MODERATE: 'var(--yellow)', NORMAL: 'var(--green)' };
+            document.getElementById('sDemand').textContent = ins.demand_level;
+            document.getElementById('sDemand').style.color = demandColors[ins.demand_level] || 'var(--text)';
+            document.getElementById('sDemandSub').textContent = `${ins.total_count} total deliveries`;
+
+            const riskLabel = ins.high_risk_count > 2 ? 'ELEVATED' : ins.high_risk_count > 0 ? 'GUARDED' : 'STABLE';
+            const riskColors = { ELEVATED: 'var(--red)', GUARDED: 'var(--yellow)', STABLE: 'var(--green)' };
+            document.getElementById('sRisk').textContent = riskLabel;
+            document.getElementById('sRisk').style.color = riskColors[riskLabel];
+            document.getElementById('sRiskSub').textContent = `${ins.high_risk_count} high · ${ins.medium_risk_count} medium`;
+
+            document.getElementById('sFleet').textContent = `${ins.utilization}%`;
+            document.getElementById('sFleetSub').textContent = `${ins.active_count}/${ins.fleet_capacity || 30} capacity`;
+
+            document.getElementById('sPerf').textContent = ins.avg_performance ? `${ins.avg_performance}%` : '—';
+            document.getElementById('sPerfSub').textContent = ins.avg_performance ? 'delivery efficiency' : 'no data yet';
+        }
+
+        // ── Table ──
+        function renderTable(deliveries) {
+            const tbody = document.getElementById('deliveryTable');
+            tbody.innerHTML = deliveries.map(d => {
+                const riskClass = d.risk_level === 'HIGH' ? 'risk-high' : d.risk_level === 'MEDIUM' ? 'risk-medium' : 'risk-low';
+                const backup = d.backup_route ? d.backup_route.route_id : '—';
+
+                let controls = '';
+                if (d.status === 'waiting') {
+                    controls = `<button class="btn btn-blue" onclick="updateStatus('${d.delivery_id}','start')">▶ Start</button>`;
+                } else if (d.status === 'active') {
+                    controls = `<button class="btn btn-green" onclick="updateStatus('${d.delivery_id}','complete')">✓ Done</button>`;
+                } else {
+                    const ps = d.performance_score;
+                    if (ps) {
+                        const cls = ps >= 90 ? 'perf-good' : ps >= 70 ? 'perf-ok' : 'perf-bad';
+                        controls = `<span class="perf-score ${cls}">${ps}%</span>`;
+                    } else {
+                        controls = '<span style="color:var(--muted);font-size:0.72rem;">done</span>';
+                    }
+                }
+
+                // Truncated action text
+                const action = (d.recommended_action || '').substring(0, 40);
+
+                return `
+                    <tr>
+                        <td><code style="font-size:0.75rem;">${d.delivery_id.substring(0, 8)}</code></td>
+                        <td><span class="badge badge-${d.status}">${d.status}</span></td>
+                        <td>${d.selected_route?.route_id || '—'}</td>
+                        <td style="color:var(--muted);font-size:0.78rem;">${backup}</td>
+                        <td><span class="${riskClass}">${d.risk_level}</span></td>
+                        <td style="font-size:0.72rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.recommended_action || ''}">${action}</td>
+                        <td>${controls}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ── Decision Engine ──
+        function renderDecisions(ins) {
+            const panel = document.getElementById('decisionPanel');
+            const decisions = ins.decisions || [];
+
+            panel.innerHTML = decisions.map(d => {
+                const cls = d.type === 'critical' ? 'decision-critical' :
+                    d.type === 'warning' ? 'decision-warning' :
+                        d.type === 'success' ? 'decision-success' : 'decision-info';
+                return `
+                    <div class="decision ${cls}">
+                        <div class="decision-title">${d.title}</div>
+                        <div class="decision-desc">${d.description}</div>
+                        <div class="decision-why">${d.reason}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Auto-feed critical decisions
+            const criticals = decisions.filter(d => d.type === 'critical' || d.type === 'warning');
+            if (criticals.length > previousDecisionCount) {
+                criticals.slice(previousDecisionCount).forEach(d => {
+                    addFeedItem(d.title, d.type === 'critical' ? 'alert' : 'warn');
+                });
+            }
+            previousDecisionCount = criticals.length;
+        }
+
+        // ── Status Update (with load-balance warning) ──
+        async function updateStatus(id, action) {
+            try {
+                const resp = await fetch(`${API}/deliveries/${id}/${action}`, { method: 'POST' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    addFeedItem(`Delivery ${id.substring(0, 8)} → ${action === 'start' ? 'ACTIVE' : 'COMPLETED'}`, action === 'start' ? 'warn' : 'ok');
+
+                    // Show load-balance warning if route is saturated
+                    if (data.warning && data.warning.saturated) {
+                        addFeedItem(`⚠️ LOAD BALANCE: ${data.warning.message}`, 'alert');
+                        if (data.warning.suggestion) {
+                            addFeedItem(`💡 ${data.warning.suggestion}`, 'warn');
+                        }
+                    }
+                    fetchData();
+                }
+            } catch (err) {
+                console.error('Status update error:', err);
+            }
+        }
+
+        // ── Fleet Scale ──
+        async function scaleFleet(action) {
+            try {
+                const resp = await fetch(`${API}/deliveries/fleet-scale`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, amount: 5 })
+                });
+                const data = await resp.json();
+                addFeedItem(`🚛 Fleet: ${data.old_capacity} → ${data.new_capacity} agents (util: ${data.new_utilization}%)`, 'ok');
+                fetchData();
+            } catch (err) {
+                addFeedItem('Fleet scale failed', 'alert');
+            }
+        }
+
+        // ── Disruption ──
+        function openDisruptionModal() { document.getElementById('disruptModal').classList.add('show'); }
+        function closeDisruptionModal() { document.getElementById('disruptModal').classList.remove('show'); }
+
+        async function executeDisruption() {
+            const type = document.getElementById('disruptType').value;
+            const route = document.getElementById('disruptRoute').value;
+            const severity = document.getElementById('disruptSeverity').value;
+
+            closeDisruptionModal();
+            addFeedItem(`🚨 DISRUPTION INJECTED: ${type} on ${route} [${severity}]`, 'alert');
+
+            try {
+                const resp = await fetch(`${API}/deliveries/disrupt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, affected_route: route, severity })
+                });
+                const result = await resp.json();
+
+                addFeedItem(`${result.affected_count} deliveries affected — system risk: ${result.system_risk_level}`, 'alert');
+
+                if (result.actions_taken) {
+                    result.actions_taken.forEach(a => {
+                        addFeedItem(`${a.delivery_id.substring(0, 8)}: ${a.action}`, 'warn');
+                    });
+                }
+
+                fetchData();
+            } catch (err) {
+                addFeedItem('Disruption injection failed', 'alert');
+            }
+        }
+
+        // ── Feed ──
+        function addFeedItem(text, type = '') {
+            const feed = document.getElementById('feedPanel');
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `feed-item ${type}`;
+            div.innerHTML = `<span>${text}</span><span class="feed-time">${time}</span>`;
+            feed.insertBefore(div, feed.firstChild);
+
+            // Keep max 30 items
+            while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+        }
+
+        function clearFeed() {
+            document.getElementById('feedPanel').innerHTML = '';
+            addFeedItem('Feed cleared', 'ok');
+        }
+
+        // ── Resilience ──
+        function renderResilience(res) {
+            const ring = document.getElementById('resRing');
+            const details = document.getElementById('resDetails');
+            const gradeEl = document.getElementById('resGrade');
+
+            const score = res.score || 0;
+            const grade = res.grade || '?';
+            const color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--yellow)' : 'var(--red)';
+
+            ring.textContent = score;
+            ring.style.borderColor = color;
+            ring.style.color = color;
+            gradeEl.textContent = `Grade: ${grade}`;
+            gradeEl.style.color = color;
+
+            const f = res.factors || {};
+            details.innerHTML = `
+                <div style="margin-bottom:6px;font-size:0.75rem;font-weight:600;">System Resilience: ${score}/100</div>
+                ${renderGaugeBar('Backup Coverage', f.backup_coverage)}
+                ${renderGaugeBar('Risk Handling', f.risk_handling)}
+                ${renderGaugeBar('Completion Rate', f.completion_rate)}
+                ${renderGaugeBar('Recovery Speed', f.recovery_speed)}
+            `;
+        }
+
+        function renderGaugeBar(label, value) {
+            const v = value || 0;
+            const color = v >= 80 ? 'var(--green)' : v >= 60 ? 'var(--yellow)' : 'var(--red)';
+            return `
+                <div class="gauge-label"><span>${label}</span><span>${v}%</span></div>
+                <div class="gauge-bar"><div class="gauge-fill" style="width:${v}%;background:${color}"></div></div>
+            `;
+        }
+
+        // ── What-If ──
+        function openWhatIfModal() {
+            document.getElementById('whatIfResults').style.display = 'none';
+            document.getElementById('whatIfModal').classList.add('show');
+        }
+        function closeWhatIfModal() { document.getElementById('whatIfModal').classList.remove('show'); }
+
+        async function runWhatIf() {
+            const scenario = document.getElementById('whatIfScenario').value;
+            const multiplier = parseFloat(document.getElementById('whatIfMultiplier').value) || 2.0;
+            const resultsDiv = document.getElementById('whatIfResults');
+
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);">Running simulation...</div>';
+
+            try {
+                const resp = await fetch(`${API}/deliveries/what-if`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario, multiplier })
+                });
+                const data = await resp.json();
+
+                let html = '<div style="margin-bottom:12px;font-weight:700;font-size:0.85rem;">Impact Analysis</div>';
+
+                // Impact items
+                if (data.impact_analysis) {
+                    html += data.impact_analysis.map(i => `<div class="whatif-impact">${i}</div>`).join('');
+                }
+
+                // Actions
+                if (data.recommended_actions && data.recommended_actions.length) {
+                    html += '<div style="margin-top:14px;margin-bottom:8px;font-weight:700;font-size:0.85rem;">Recommended Actions</div>';
+                    html += data.recommended_actions.map(a => `
+                        <div class="whatif-action priority-${a.priority}">
+                            <div style="font-weight:600;">[${a.priority}] ${a.action}</div>
+                            <div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">WHY: ${a.reason}</div>
+                        </div>
+                    `).join('');
+                }
+
+                resultsDiv.innerHTML = html;
+                addFeedItem(`What-If: ${scenario} (x${multiplier}) simulation completed`, 'ok');
+            } catch (err) {
+                resultsDiv.innerHTML = '<div style="color:var(--red);padding:12px;">Simulation failed.</div>';
+            }
+        }
+
+        // ── Start ──
+        init();
+    </script>
+</body>
+
+</html>

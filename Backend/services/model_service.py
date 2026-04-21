@@ -5,8 +5,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import warnings
 
+
 import joblib
 import numpy as np
+
+# Firebase helper import
+from Backend.utils.firebase_helper import get_active_deliveries_count
 
 from Backend.services.fallback_logic import predict_delay_fallback, predict_demand_fallback
 
@@ -632,14 +636,90 @@ class ModelService:
         adjusted = self._apply_delay_probability_adjustments(base_probability, signals)
         return self._build_delay_output(adjusted["probability"], signals, adjusted["factors"])
 
-    def predict_demand(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
-        if self.demand_model is not None:
-            result = self.predict_demand_model(data_dict)
-            if result.get("predicted_demand") is not None:
-                return {"predicted_demand": float(result["predicted_demand"])}
 
-        fallback_result = predict_demand_fallback(data_dict)
-        return {"predicted_demand": float(fallback_result["predicted_demand"])}
+    def predict_demand(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Hybrid demand prediction: ML + real-time load (Firebase)
+        Returns debug info and is failsafe.
+        """
+        # 1. ML demand prediction (float)
+        ml_score = None
+        try:
+            if self.demand_model is not None:
+                result = self.predict_demand_model(data_dict)
+                ml_score = float(result["predicted_demand"])
+            else:
+                fallback_result = predict_demand_fallback(data_dict)
+                ml_score = float(fallback_result["predicted_demand"])
+        except Exception:
+            ml_score = 1.0  # fallback neutral
+
+        # 2. Real-time load from Firebase
+        try:
+            active = get_active_deliveries_count()
+        except Exception:
+            active = -1
+
+        # 3. Normalize active deliveries
+        load_factor = 0.0
+        if active >= 20:
+            load_factor = 0.5
+        elif active >= 10:
+            load_factor = 0.3
+        elif active >= 5:
+            load_factor = 0.1
+        elif active >= 0:
+            load_factor = 0.0
+        else:
+            # Firebase failed, fallback
+            load_factor = 0.0
+
+        # 4. Time-based intelligence (peak hour)
+        # Accepts: peak_hour in data_dict (1/0), or infer from hour
+        peak_hour = 0
+        if "peak_hour" in data_dict:
+            try:
+                peak_hour = int(data_dict["peak_hour"])
+            except Exception:
+                peak_hour = 0
+        else:
+            # Try to infer from order_date/hour
+            dt = None
+            if "order_date" in data_dict:
+                try:
+                    dt = datetime.strptime(str(data_dict["order_date"]).split("T")[0], "%Y-%m-%d")
+                except Exception:
+                    pass
+            elif "date" in data_dict:
+                try:
+                    dt = datetime.strptime(str(data_dict["date"]).split("T")[0], "%Y-%m-%d")
+                except Exception:
+                    pass
+            if dt:
+                if dt.hour in {8,9,10,17,18,19,20}:
+                    peak_hour = 1
+
+        if peak_hour == 1:
+            load_factor += 0.2
+
+        # 5. Final score
+        final_score = ml_score + load_factor
+
+        # 6. Map to demand levels
+        if final_score < 1.8:
+            demand = "LOW"
+        elif final_score < 2.3:
+            demand = "MEDIUM"
+        else:
+            demand = "HIGH"
+
+        # 7. Return debug info
+        return {
+            "demand_level": demand,
+            "ml_score": ml_score,
+            "active_deliveries": active,
+            "final_score": round(final_score, 3),
+        }
 
     def health_check(self) -> Dict[str, Any]:
         checks = {
