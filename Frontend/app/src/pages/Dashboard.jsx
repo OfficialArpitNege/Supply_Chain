@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  collection, 
-  query, 
-  onSnapshot, 
-  orderBy, 
+import {
+  collection,
+  query,
+  onSnapshot,
+  orderBy,
   limit,
   where
 } from 'firebase/firestore';
@@ -12,9 +12,9 @@ import { db } from '../config/firebase';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { 
-  MdLocalShipping, 
-  MdWarning, 
+import {
+  MdLocalShipping,
+  MdWarning,
   MdSchedule,
   MdCheckCircle,
   MdCancel,
@@ -98,7 +98,7 @@ const Dashboard = () => {
     });
 
     // 3. Active Deliveries
-    const unsubDeliveries = onSnapshot(query(collection(db, 'deliveries'), where('status', 'in', ['dispatched', 'in_transit', 'nearing'])), (snap) => {
+    const unsubDeliveries = onSnapshot(query(collection(db, 'deliveries'), where("status", "==", "dispatched")), (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       data.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
       setDeliveries(data);
@@ -109,6 +109,7 @@ const Dashboard = () => {
     onSnapshot(collection(db, 'drivers'), (snap) => setDrivers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
     // 5. Activity Feed (from notifications/deliveries)
+
     const unsubNotifs = onSnapshot(query(collection(db, 'notifications'), orderBy('created_at', 'desc'), limit(20)), (snap) => {
       setActivityFeed(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -123,7 +124,7 @@ const Dashboard = () => {
       // 1. Accept Order
       const res = await callApi(`/orders/${orderId}/accept`, { method: 'POST' });
       toast.success(res.message, { id: tid });
-      
+
       // 2. Navigate to Logistics for the next steps
       navigate(`/logistics?orderId=${orderId}`);
     } catch (e) {
@@ -149,20 +150,20 @@ const Dashboard = () => {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col gap-6 overflow-hidden">
-      
+
       {/* --- Top Section: 2x2 Grid + Map --- */}
       <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
-        
+
         {/* 1. Incoming Requests (LEFT) */}
         <div className="col-span-3 flex flex-col bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl overflow-hidden">
           <div className="flex border-b border-slate-700">
-            <button 
+            <button
               onClick={() => setActiveTab('orders')}
               className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
             >
               Orders ({orders.length})
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('suppliers')}
               className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'suppliers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
             >
@@ -173,33 +174,33 @@ const Dashboard = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {activeTab === 'orders' ? (
               orders.length === 0 ? <p className="text-center text-slate-500 py-10 text-xs italic">No pending orders</p> :
-              orders.map(o => (
-                <div key={o.id} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 hover:border-blue-500/50 transition-all group">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-[10px] font-mono text-blue-400">#{o.order_id?.slice(-8)}</p>
-                    <span className="text-[9px] font-black text-slate-500 uppercase">{new Date(o.created_at?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                orders.map(o => (
+                  <div key={o.id} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 hover:border-blue-500/50 transition-all group">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-[10px] font-mono text-blue-400">#{o.order_id?.slice(-8)}</p>
+                      <span className="text-[9px] font-black text-slate-500 uppercase">{new Date(o.created_at?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <h4 className="text-sm font-black text-white truncate">{o.customer_name}</h4>
+                    <p className="text-[10px] text-slate-400 mb-4">{o.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleAcceptOrder(o.id)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all">Accept</button>
+                      <button className="px-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-xl transition-all"><MdCancel /></button>
+                    </div>
                   </div>
-                  <h4 className="text-sm font-black text-white truncate">{o.customer_name}</h4>
-                  <p className="text-[10px] text-slate-400 mb-4">{o.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleAcceptOrder(o.id)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all">Accept</button>
-                    <button className="px-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-xl transition-all"><MdCancel /></button>
-                  </div>
-                </div>
-              ))
+                ))
             ) : (
               supplierRequests.length === 0 ? <p className="text-center text-slate-500 py-10 text-xs italic">No pending requests</p> :
-              supplierRequests.map(s => (
-                <div key={s.id} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 hover:border-emerald-500/50 transition-all">
-                  <p className="text-[10px] font-mono text-emerald-400 mb-1">#{s.request_id}</p>
-                  <h4 className="text-sm font-black text-white">{s.product_name}</h4>
-                  <div className="grid grid-cols-2 gap-2 my-3">
-                    <div className="bg-slate-800 p-2 rounded-lg"><p className="text-[8px] text-slate-500 uppercase font-black">Qty</p><p className="text-xs font-black">{s.quantity}</p></div>
-                    <div className="bg-slate-800 p-2 rounded-lg"><p className="text-[8px] text-slate-500 uppercase font-black">Price</p><p className="text-xs font-black">${s.price_per_unit}</p></div>
+                supplierRequests.map(s => (
+                  <div key={s.id} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 hover:border-emerald-500/50 transition-all">
+                    <p className="text-[10px] font-mono text-emerald-400 mb-1">#{s.request_id}</p>
+                    <h4 className="text-sm font-black text-white">{s.product_name}</h4>
+                    <div className="grid grid-cols-2 gap-2 my-3">
+                      <div className="bg-slate-800 p-2 rounded-lg"><p className="text-[8px] text-slate-500 uppercase font-black">Qty</p><p className="text-xs font-black">{s.quantity}</p></div>
+                      <div className="bg-slate-800 p-2 rounded-lg"><p className="text-[8px] text-slate-500 uppercase font-black">Price</p><p className="text-xs font-black">${s.price_per_unit}</p></div>
+                    </div>
+                    <button onClick={() => callApi(`/supplier/requests/${s.id}/approve`, { method: 'POST' })} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all">Approve Stock</button>
                   </div>
-                  <button onClick={() => callApi(`/supplier/requests/${s.id}/approve`, { method: 'POST' })} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all">Approve Stock</button>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>
@@ -209,7 +210,7 @@ const Dashboard = () => {
           <MapContainer center={[19.0760, 72.8777]} zoom={12} style={{ height: '100%', width: '100%', background: '#0F172A' }}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
             <MapRefocuser center={mapCenter} />
-            
+
             {warehouses.map(w => {
               if (!w.location?.lat || !w.location?.lon) return null;
               return (
@@ -223,16 +224,16 @@ const Dashboard = () => {
               const isSelected = selectedDelivery?.id === d.id;
               const point = d.route?.[d.current_index || 0];
               const validRoute = d.route?.filter(p => p && p.lat !== undefined && p.lon !== undefined) || [];
-              
+
               if (!point || point.lat === undefined || point.lon === undefined) return null;
-              
+
               return (
                 <React.Fragment key={d.id}>
                   {validRoute.length > 1 && (
-                    <Polyline 
-                      positions={validRoute.map(p => [p.lat, p.lon])} 
-                      color={isSelected ? '#3B82F6' : (d.risk_level === 'HIGH' ? '#EF4444' : '#64748B')} 
-                      weight={isSelected ? 6 : 2} 
+                    <Polyline
+                      positions={validRoute.map(p => [p.lat, p.lon])}
+                      color={isSelected ? '#3B82F6' : (d.risk_level === 'HIGH' ? '#EF4444' : '#64748B')}
+                      weight={isSelected ? 6 : 2}
                       opacity={isSelected ? 1 : 0.3}
                     />
                   )}
@@ -307,7 +308,7 @@ const Dashboard = () => {
 
       {/* --- Bottom Section: Lists --- */}
       <div className="h-64 grid grid-cols-12 gap-6 min-h-0">
-        
+
         {/* Active Deliveries List */}
         <div className="col-span-8 bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl flex flex-col overflow-hidden">
           <div className="px-8 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/30">

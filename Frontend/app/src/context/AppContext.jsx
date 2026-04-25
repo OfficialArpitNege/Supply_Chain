@@ -42,7 +42,7 @@ export const AppProvider = ({ children }) => {
 
     const q = query(
       collection(db, "deliveries"),
-      where("status", "in", ["pending", "in-transit"])
+      where("status", "==", "dispatched")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -75,7 +75,7 @@ export const AppProvider = ({ children }) => {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (userRole) headers['X-Role'] = userRole;
-      
+
       const response = await fetch('http://127.0.0.1:8000/predict-demand', {
         method: 'POST',
         headers,
@@ -106,7 +106,7 @@ export const AppProvider = ({ children }) => {
   const callApi = async (endpoint, options = {}) => {
     const API_BASE = 'http://127.0.0.1:8000';
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
-    
+
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -125,8 +125,20 @@ export const AppProvider = ({ children }) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `API Error: ${response.status}`);
+      let errorMessage = `API Error: ${response.status}`;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } else {
+          const errorText = await response.text();
+          errorMessage = errorText.slice(0, 200) || errorMessage;
+        }
+      } catch (parseError) {
+        console.error("Error parsing error response:", parseError);
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();

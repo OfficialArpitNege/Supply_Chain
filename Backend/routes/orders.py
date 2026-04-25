@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 import uuid
 from google.cloud import firestore
+from google.cloud.firestore_v1 import Increment
 import math
 
 from Backend.utils.firebase_helper import get_firestore_client, get_active_deliveries_count
@@ -281,7 +282,7 @@ def accept_order(order_id: str = Path(...), payload: AcceptOrderRequest = Accept
                 
                 # Reserve
                 transaction.update(inv_ref, {
-                    "reserved_quantity": firestore.Increment(item.quantity)
+                    "reserved_quantity": Increment(item.quantity)
                 })
                 reserved_skus.append({"sku": item.sku, "reserved": item.quantity})
             return reserved_skus
@@ -565,6 +566,12 @@ def dispatch_order(order_id: str = Path(...)):
         driver_id = order_data.get("driver_id")
         cust_loc = order_data.get("customer_location", {})
 
+        # Validate required fields
+        if not warehouse_id:
+            raise HTTPException(status_code=400, detail="Order missing warehouse_id")
+        if not driver_id:
+            raise HTTPException(status_code=400, detail="Order missing driver_id - driver must be assigned first")
+
         # Get warehouse location for route generation
         wh_doc = db.collection("warehouses").document(warehouse_id).get()
         if not wh_doc.exists:
@@ -572,23 +579,37 @@ def dispatch_order(order_id: str = Path(...)):
         wh_data = wh_doc.to_dict()
         wh_loc = wh_data.get("location", {})
 
+        # Validate locations have required coordinates
+        if not wh_loc.get("lat") or not wh_loc.get("lon"):
+            raise HTTPException(status_code=400, detail="Warehouse location is incomplete (missing lat/lon)")
+        if not cust_loc.get("lat") or not cust_loc.get("lon"):
+            raise HTTPException(status_code=400, detail="Customer location is incomplete (missing lat/lon)")
+
         # ── ML-DRIVEN DEMAND PREDICTION ──
-        from Backend.services.model_service import predict_demand as predict_demand_model
-        demand_result = predict_demand_model({
-            "product_id": 101,
-            "category": "Grocery & Staples",
-            "order_date": datetime.now(timezone.utc).isoformat()
-        })
-        demand_level = demand_result.get("demand_level", "MEDIUM")
+        try:
+            from Backend.services.model_service import predict_demand as predict_demand_model
+            demand_result = predict_demand_model({
+                "product_id": 101,
+                "category": "Grocery & Staples",
+                "order_date": datetime.now(timezone.utc).isoformat()
+            })
+            demand_level = demand_result.get("demand_level", "MEDIUM")
+        except Exception as e:
+            print(f"ML Demand prediction failed: {e}")
+            demand_level = "MEDIUM"
 
         # ── ML-INTEGRATED ROUTE GENERATION ──
-        rec_request = RecommendRoutesRequest(
-            start_lat=wh_loc.get("lat"),
-            start_lon=wh_loc.get("lon"),
-            end_lat=cust_loc.get("lat"),
-            end_lon=cust_loc.get("lon"),
-        )
-        recommendations = recommend_routes(rec_request)
+        try:
+            rec_request = RecommendRoutesRequest(
+                start_lat=float(wh_loc.get("lat")),
+                start_lon=float(wh_loc.get("lon")),
+                end_lat=float(cust_loc.get("lat")),
+                end_lon=float(cust_loc.get("lon")),
+            )
+            recommendations = recommend_routes(rec_request)
+        except Exception as e:
+            print(f"Route recommendation failed: {e}")
+            raise HTTPException(status_code=502, detail=f"Failed to generate route recommendations: {str(e)}")
         
         # ── DEMAND-AWARE SELECTION ──
         all_eval_routes = [r.model_dump() for r in recommendations.routes]
@@ -635,33 +656,68 @@ def dispatch_order(order_id: str = Path(...)):
         final_explanation += f"\n\nFinal Decision:\nPrioritized {'reliability' if demand_level == 'HIGH' else 'efficiency'} due to {demand_level} system demand."
 
         # ── REJECTED REASONS FOR AUDIT ──
+        best_route_id = str(best_route.id)
         for route in all_eval_routes:
-            if route["id"] == best_route.id:
+            if str(route.get("id", "")) == best_route_id:
                 route["rejected_reason"] = None
                 continue
             
             # Simple rejection logic
-            if route["probability_delayed"] > best_route.probability_delayed:
-                route["rejected_reason"] = f"Higher delay probability (+{round((route['probability_delayed'] - best_route.probability_delayed)*100, 1)}%)"
-            elif route["traffic_eta"] > best_route.traffic_eta:
-                route["rejected_reason"] = f"Longer estimated arrival (+{round(route['traffic_eta'] - best_route.traffic_eta, 1)}m)"
+            route_delay_prob = float(route.get("probability_delayed", 0))
+            route_traffic_eta = float(route.get("traffic_eta", 0))
+            best_delay_prob = float(best_route.probability_delayed)
+            best_traffic_eta = float(best_route.traffic_eta)
+            
+            if route_delay_prob > best_delay_prob:
+                route["rejected_reason"] = f"Higher delay probability (+{round((route_delay_prob - best_delay_prob)*100, 1)}%)"
+            elif route_traffic_eta > best_traffic_eta:
+                route["rejected_reason"] = f"Longer estimated arrival (+{round(route_traffic_eta - best_traffic_eta, 1)}m)"
             else:
                 route["rejected_reason"] = "Lower overall composite score"
 
         # ── Build route waypoints ──
         route_waypoints = []
-        if best_route.route_path:
-            route_waypoints.append({"lat": wh_loc.get("lat"), "lon": wh_loc.get("lon"), "label": wh_data.get("name", "Warehouse")})
-            path = best_route.route_path
+        def safe_float(val):
+            try:
+                if val is None:
+                    return 0.0
+                val = float(val)
+                if math.isnan(val) or math.isinf(val):
+                    return 0.0
+                return val
+            except:
+                return 0.0
+        def safe_str(val):
+            return str(val) if val is not None else ""
+        if best_route.route_path and len(best_route.route_path) > 0:
+            route_waypoints.append({
+                "lat": safe_float(wh_loc.get("lat")),
+                "lon": safe_float(wh_loc.get("lon")),
+                "label": safe_str(wh_data.get("name", "Warehouse"))
+            })
+
+        path = best_route.route_path
+
+        if len(path) > 2:
             step = max(1, len(path) // 4)
+
             for i in range(step, len(path) - 1, step):
-                route_waypoints.append({"lat": path[i][0], "lon": path[i][1], "label": f"Waypoint {len(route_waypoints)}"})
-            route_waypoints.append({"lat": cust_loc.get("lat"), "lon": cust_loc.get("lon"), "label": order_data.get("customer_name", "Customer")})
+                if i < len(path):
+                    route_waypoints.append({
+                        "lat": safe_float(path[i][0]),
+                        "lon": safe_float(path[i][1]),
+                        "label": f"Waypoint {len(route_waypoints)}"
+                    })
+        route_waypoints.append({
+        "lat": safe_float(cust_loc.get("lat")),
+        "lon": safe_float(cust_loc.get("lon")),
+        "label": safe_str(order_data.get("customer_name", "Customer"))
+    })
 
         now = datetime.now(timezone.utc)
         delivery_id = f"DEL-{uuid.uuid4().hex[:8].upper()}"
-        total_eta = round(best_route.traffic_eta, 2)
-        total_distance = round(best_route.distance, 2)
+        total_eta = round(float(best_route.traffic_eta or 0), 2)
+        total_distance = round(float(best_route.distance or 0), 2)
 
         # ── LOAD BALANCING CHECK (CRITICAL) ──
         active_on_route = 0
@@ -673,14 +729,14 @@ def dispatch_order(order_id: str = Path(...)):
                     active_on_route += 1
         except Exception as e:
             print(f"Load balancing query failed (likely missing index): {e}")
-            
-        recommended_action = f"DISPATCH: Route {best_route.id} ({selection_mode})"
+        best_route_id_str = str(best_route.id)
+        recommended_action = f"DISPATCH: Route {best_route_id_str} ({selection_mode})"
         if active_on_route >= 5:
-            recommended_action = f"LOAD ALERT: Route {best_route.id} has {active_on_route} active deliveries. Consider manual reroute to backup."
+            recommended_action = f"LOAD ALERT: Route {best_route_id_str} has {active_on_route} active deliveries. Consider manual reroute to backup."
             # Trigger Live Alert
             db.collection("notifications").add({
                 "type": "CONGESTION",
-                "message": f"⚠️ Route {best_route.id} overloaded ({active_on_route} deliveries) — reroute suggested",
+                "message": f"⚠️ Route {best_route_id_str} overloaded ({active_on_route} deliveries) — reroute suggested",
                 "priority": "MEDIUM",
                 "created_at": now,
                 "read": False
@@ -699,20 +755,28 @@ def dispatch_order(order_id: str = Path(...)):
             "start_location": {"lat": wh_loc.get("lat"), "lon": wh_loc.get("lon")},
             "end_location": {"lat": cust_loc.get("lat"), "lon": cust_loc.get("lon")},
             "selected_route": {
-                "route_id": best_route.id,
+                "route_id": str(best_route.id),
                 "distance": total_distance,
                 "eta": total_eta,
-                "traffic_speed": round(best_route.traffic_speed, 2),
-                "delay_prob": round(best_route.probability_delayed, 4),
-                "score": best_route.score
+                "traffic_speed": round(float(best_route.traffic_speed or 0), 2),
+                "delay_prob": round(float(best_route.probability_delayed or 0), 4),
+                "score": float(best_route.score or 0)
             },
             "backup_route": {
-                "route_id": backup.id,
-                "distance": round(backup.distance, 2),
-                "eta": round(backup.traffic_eta, 2),
-                "traffic_speed": round(backup.traffic_speed, 2),
+                "route_id": str(backup.id),
+                "distance": round(float(backup.distance or 0), 2),
+                "eta": round(float(backup.traffic_eta or 0), 2),
+                "traffic_speed": round(float(backup.traffic_speed or 0), 2),
             } if backup else None,
-            "all_routes": all_eval_routes,
+            "all_routes": [
+    {
+        "id": str(r.get("id")),
+        "score": float(r.get("score", 0)),
+        "eta": float(r.get("traffic_eta", 0)),
+        "risk": str(r.get("risk", "LOW"))
+    }
+    for r in all_eval_routes
+],
             "confidence_score": confidence_pct,
             "confidence_label": confidence_label,
             "selection_mode": selection_mode,
@@ -738,6 +802,7 @@ def dispatch_order(order_id: str = Path(...)):
         db.collection("deliveries").document(delivery_id).set(delivery_doc)
 
         # Update order
+
         order_ref.update({
             "status": "dispatched",
             "delivery_id": delivery_id,
@@ -754,24 +819,27 @@ def dispatch_order(order_id: str = Path(...)):
         items = order_data.get("items", [])
         total_units = sum(item.get("quantity", 0) for item in items)
 
-        from firebase_admin import firestore
         db.collection("warehouses").document(warehouse_id).update({
-            "current_load": firestore.Increment(-total_units),
-            "current_inventory_load": firestore.Increment(-total_units),
+            "current_load": Increment(-total_units),
+            "current_inventory_load": Increment(-total_units),
             "updated_at": now,
         })
 
         # Finalize inventory: decrement quantity AND reserved_quantity
-        for item in items:
-            inv_docs = db.collection("inventory") \
-                .where("warehouse_id", "==", warehouse_id) \
-                .where("sku", "==", item.get("sku")) \
-                .stream()
-            for inv_doc in inv_docs:
-                db.collection("inventory").document(inv_doc.id).update({
-                    "quantity": firestore.Increment(-item.get("quantity", 0)),
-                    "reserved_quantity": firestore.Increment(-item.get("quantity", 0)),
-                })
+        try:
+            for item in items:
+                inv_docs = db.collection("inventory") \
+                    .where("warehouse_id", "==", warehouse_id) \
+                    .where("sku", "==", item.get("sku")) \
+                    .stream()
+                for inv_doc in inv_docs:
+                    db.collection("inventory").document(inv_doc.id).update({
+                        "quantity": Increment(-item.get("quantity", 0)),
+                        "reserved_quantity": Increment(-item.get("quantity", 0)),
+                    })
+        except Exception as e:
+            print(f"Inventory finalization failed (likely missing index): {e}")
+            # Non-blocking for the dispatch itself in this demo context
 
         return {
             "status": "success",
@@ -964,3 +1032,5 @@ def get_order(order_id: str = Path(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+

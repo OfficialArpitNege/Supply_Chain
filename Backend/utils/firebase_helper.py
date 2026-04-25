@@ -2,6 +2,18 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 from functools import lru_cache
+import math
+
+def clean_firestore(data):
+    if isinstance(data, float):
+        if math.isnan(data) or math.isinf(data):
+            return 0
+        return data
+    if isinstance(data, dict):
+        return {k: clean_firestore(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [clean_firestore(v) for v in data]
+    return data
 
 # Initialize Firebase only once
 @lru_cache(maxsize=1)

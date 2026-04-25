@@ -356,8 +356,8 @@ def recommend_routes(payload: RecommendRoutesRequest) -> RecommendRoutesResponse
                 }
             )
 
-        if len(enriched_routes) < 2:
-            raise RuntimeError("Unable to compare multiple routes for recommendation.")
+        if len(enriched_routes) < 1:
+            raise RuntimeError("Unable to find any routes for recommendation.")
 
         best_route = max(enriched_routes, key=lambda route: float(route["score"]))
         explanation = _build_recommendation_explanation(best_route, enriched_routes)
