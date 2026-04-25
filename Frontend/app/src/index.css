@@ -126,6 +126,30 @@
   background: #475569;
 }
 
+/* Custom Animations for Toasts and Overlays */
+@keyframes enter {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes leave {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.9) translateY(10px); }
+}
+.animate-enter { animation: enter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-leave { animation: leave 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+@keyframes slide-in-from-left-8 {
+  from { transform: translateX(-2rem); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-in { animation-duration: 0.5s; animation-fill-mode: forwards; }
+.slide-in-from-left-8 { animation-name: slide-in-from-left-8; }
+
+/* Better Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -133,9 +157,16 @@
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(13, 13, 20, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }

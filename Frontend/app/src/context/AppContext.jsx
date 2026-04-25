@@ -73,9 +73,12 @@ export const AppProvider = ({ children }) => {
 
   const updateDemandLevel = async (count) => {
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (userRole) headers['X-Role'] = userRole;
+      
       const response = await fetch('http://127.0.0.1:8000/predict-demand', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           product_id: 101,
           category: "System_Global",
@@ -100,13 +103,43 @@ export const AppProvider = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
+  const callApi = async (endpoint, options = {}) => {
+    const API_BASE = 'http://127.0.0.1:8000';
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (userRole) {
+      headers['X-Role'] = userRole;
+    }
+    if (currentUser?.email) {
+      headers['X-Email'] = currentUser.email;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `API Error: ${response.status}`);
+    }
+
+    return response.json();
+  };
+
   const value = {
     currentUser,
     userRole,
     activeDeliveriesCount,
     systemDemandLevel,
     logout,
-    loading
+    loading,
+    callApi
   };
 
   return (

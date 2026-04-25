@@ -38,6 +38,7 @@ import toast from 'react-hot-toast';
 const API_BASE = 'http://127.0.0.1:8000';
 
 const AIInsights = () => {
+  const { callApi } = useApp();
   const [deliveries, setDeliveries] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,13 +68,10 @@ const AIInsights = () => {
   // Poll Demand Forecast every 30s
   const fetchDemand = async () => {
     try {
-      const res = await fetch(`${API_BASE}/predict-demand`, {
+      const data = await callApi('/predict-demand', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ product_id: 101, category: "AI_INSIGHTS", order_date: new Date().toISOString() })
       });
-      if (!res.ok) throw new Error("API Offline");
-      const data = await res.json();
       setDemandLevel({ level: data.demand_level, score: data.final_score, active: data.active_deliveries });
       setPollingError(false);
     } catch (err) {

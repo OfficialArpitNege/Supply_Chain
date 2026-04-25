@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from Backend.services.live_route_service import analyze_alternative_routes_live, analyze_route_live
 from Backend.services.model_service import predict_delay as predict_delay_model
 from Backend.services.model_service import predict_demand as predict_demand_model
+from Backend.utils.auth_helper import role_required
+from fastapi import Depends
 
 router = APIRouter(tags=["analyze"])
 
@@ -134,7 +136,7 @@ def _derive_risk_level(delay: int, demand: float, traffic: str, weather: str) ->
     return "LOW"
 
 
-@router.post("/analyze-route", response_model=AnalyzeRouteResponse)
+@router.post("/analyze-route", response_model=AnalyzeRouteResponse, dependencies=[Depends(role_required(["admin"]))])
 def analyze_route(payload: AnalyzeRouteRequest) -> AnalyzeRouteResponse:
     try:
         route_data = analyze_route_live(payload.start_lat, payload.start_lon, payload.end_lat, payload.end_lon)
@@ -208,7 +210,7 @@ def analyze_route(payload: AnalyzeRouteRequest) -> AnalyzeRouteResponse:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/analyze-route", response_model=AnalyzeRouteResponse)
+@router.get("/analyze-route", response_model=AnalyzeRouteResponse, dependencies=[Depends(role_required(["admin"]))])
 def analyze_route_get(
     start_lat: float = Query(..., ge=-90, le=90),
     start_lon: float = Query(..., ge=-180, le=180),
@@ -290,7 +292,7 @@ def analyze_route_get(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.post("/recommend-routes", response_model=RecommendRoutesResponse)
+@router.post("/recommend-routes", response_model=RecommendRoutesResponse, dependencies=[Depends(role_required(["admin"]))])
 def recommend_routes(payload: RecommendRoutesRequest) -> RecommendRoutesResponse:
     try:
         timestamp = payload.timestamp or datetime.now(timezone.utc).isoformat()

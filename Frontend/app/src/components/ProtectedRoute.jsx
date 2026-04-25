@@ -34,7 +34,13 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
             Your security profile <span className="text-red-400 font-black uppercase font-mono">[{userRole}]</span> does not have authorization to view this operational sector. This event has been logged.
           </p>
           <button 
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => {
+              if (userRole === 'admin') window.location.href = '/admin-dashboard';
+              else if (userRole === 'supplier') window.location.href = '/supplier-dashboard';
+              else if (userRole === 'customer') window.location.href = '/customer-dashboard';
+              else if (userRole === 'driver') window.location.href = '/driver-dashboard';
+              else window.location.href = '/login';
+            }}
             className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all"
           >
             Safe Egress to Dashboard

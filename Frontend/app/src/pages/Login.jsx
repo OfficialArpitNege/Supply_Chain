@@ -2,56 +2,71 @@ import React, { useState } from 'react';
 import { auth, db } from '../config/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MdLockOutline, MdEmail, MdSecurity, MdArrowForward } from 'react-icons/md';
 import toast from 'react-hot-toast';
 
 const Login = () => {
-  const [email, setEmail] = useState('admin@supplychain.com');
-  const [password, setPassword] = useState('password123'); // For demo
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = location.state?.from?.pathname || "/dashboard";
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      let userCredential;
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (signInError) {
-        // Fallback: If it's the demo admin and it fails, try to create it
-        if (email === 'admin@supplychain.com') {
+      // 1. Check for Hardcoded Admin (DEMO ONLY)
+      if (email === 'admin@logistics.com' && password === 'admin123') {
+        // Sign in to Firebase with these credentials (assuming they exist or we create them)
+        let userCredential;
+        try {
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        } catch (err) {
+          // If admin doesn't exist, create it (DEMO convenience)
           const { createUserWithEmailAndPassword } = await import('firebase/auth');
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          toast.success("Demo Admin Provisioned");
-        } else {
-          throw signInError;
         }
+        
+        const user = userCredential.user;
+        // Ensure Firestore doc exists with 'admin' role
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+          await setDoc(doc(db, "users", user.uid), {
+            email: user.email,
+            role: 'admin',
+            name: 'SYSTEM ADMIN',
+            created_at: serverTimestamp()
+          });
+        }
+        
+        toast.success("Admin Access Granted");
+        navigate('/admin-dashboard');
+        return;
       }
-      
+
+      // 2. Regular User Login
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Ensure user document exists in Firestore (for demo convenience)
+      // 3. Fetch Role and Redirect
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email,
-          role: user.email === 'admin@supplychain.com' ? 'admin' : 'staff',
-          name: user.email.split('@')[0].toUpperCase(),
-          status: 'active',
-          created_at: serverTimestamp()
-        });
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        toast.success(`Welcome back, ${userData.name}`);
+        
+        const role = userData.role;
+        if (role === 'admin') navigate('/admin-dashboard');
+        else if (role === 'supplier') navigate('/supplier-dashboard');
+        else if (role === 'customer') navigate('/customer-dashboard');
+        else if (role === 'driver') navigate('/driver-dashboard');
+        else navigate('/dashboard'); // Fallback
+      } else {
+        toast.error("User profile not found.");
       }
-
-      toast.success(`Welcome back, Officer`);
-      navigate(from, { replace: true });
     } catch (error) {
       console.error(error);
-      toast.error("Invalid credentials or security clearance.");
+      toast.error("Invalid credentials.");
     } finally {
       setLoading(false);
     }
@@ -80,7 +95,7 @@ const Login = () => {
                  <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                  <input 
                    type="email" required
-                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-12 py-3 text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-700" 
+                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-12 py-3 text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-700 text-white" 
                    placeholder="operator@system.com"
                    value={email}
                    onChange={e => setEmail(e.target.value)}
@@ -94,7 +109,7 @@ const Login = () => {
                  <MdLockOutline className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                  <input 
                    type="password" required
-                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-12 py-3 text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-700" 
+                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-12 py-3 text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-700 text-white" 
                    placeholder="••••••••"
                    value={password}
                    onChange={e => setPassword(e.target.value)}
@@ -112,16 +127,18 @@ const Login = () => {
           </form>
 
           <div className="mt-8 pt-8 border-t border-slate-700/50 text-center">
-             <p className="text-[10px] text-slate-600 font-mono tracking-widest uppercase mb-4">Demo Credentials</p>
-             <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/30 text-left">
-                <p className="text-[10px] text-slate-400 mb-1 leading-none">ROOT ACCESS:</p>
-                <p className="text-[11px] text-blue-400 font-mono">admin@supplychain.com / password123</p>
+             <p className="text-xs text-slate-500">
+               New operative? <Link to="/signup" className="text-blue-500 font-bold hover:underline">Register Here</Link>
+             </p>
+             <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/30 text-left mt-4">
+                <p className="text-[10px] text-slate-400 mb-1 leading-none uppercase tracking-widest">Master Admin:</p>
+                <p className="text-[11px] text-blue-400 font-mono">admin@logistics.com / admin123</p>
              </div>
           </div>
         </div>
 
         <p className="text-center mt-8 text-[9px] text-slate-600 uppercase font-black tracking-[0.3em]">
-          Secure Neural Layer v0.1.0-RC
+          Secure Neural Layer v0.2.0-STABLE
         </p>
       </div>
     </div>

@@ -23,6 +23,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
   MdLocalShipping, 
+   MdDashboard,
   MdAdd, 
   MdCheckCircle, 
   MdPlayArrow, 
@@ -79,7 +80,7 @@ const MapController = ({ center, zoom = 11 }) => {
 };
 
 const Logistics = () => {
-  const { systemDemandLevel } = useApp();
+  const { systemDemandLevel, callApi } = useApp();
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDelivery, setSelectedDelivery] = useState(null);
@@ -150,40 +151,32 @@ const Logistics = () => {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 120000); // Extended 120s for National Grid missions
 
-      const [recRes, demRes] = await Promise.all([
-        fetch(`${API_BASE}/recommend-routes`, {
+      const [recData, demData] = await Promise.all([
+        callApi('/recommend-routes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ start_lat: start.lat, start_lon: start.lon, end_lat: end.lat, end_lon: end.lon }),
           signal: controller.signal
         }),
-        fetch(`${API_BASE}/predict-demand`, {
+        callApi('/predict-demand', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ product_id: 101, category: "Global", order_date: new Date().toISOString() }),
           signal: controller.signal
         })
       ]);
-      clearTimeout(id);
-
-      const recData = await recRes.json();
-      const demData = await demRes.json();
       
       setRecommendations(recData);
       
       const bestRoute = recData.routes.find(r => r.id === recData.recommended_route_id);
       if (bestRoute) {
         setSelectedRouteId(bestRoute.id);
-        const analysisRes = await fetch(`${API_BASE}/analyze-route`, {
+        const analysisData = await callApi('/analyze-route', {
            method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ 
              start_lat: start.lat, start_lon: start.lon, end_lat: end.lat, end_lon: end.lon, 
              route_id: bestRoute.id, 
              timestamp: new Date().toISOString() 
            })
         });
-        const analysisData = await analysisRes.json();
         setAnalysis({ ...analysisData, demand_level: demData.demand_level });
         setShowAnalysisDrawer(true);
       }

@@ -2,14 +2,20 @@
 Delivery Management Router — Persistent lifecycle tracking with intelligence layer.
 Supports: create, start, complete, list, system insights, disruption injection.
 """
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel, Field
+from Backend.services.model_service import predict_delay as predict_delay_model
+from Backend.services.model_service import predict_demand as predict_demand_model
+from Backend.utils.firebase_helper import get_firestore_client, get_active_deliveries_count
+
+import threading
+import time
+from Backend.routes.analyze import recommend_routes, RecommendRoutesRequest
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import uuid
-
-from Backend.utils.firebase_helper import get_firestore_client, get_active_deliveries_count
-from Backend.routes.analyze import recommend_routes, RecommendRoutesRequest
+from Backend.utils.auth_helper import role_required
+from fastapi import Depends
 
 router = APIRouter(prefix="/deliveries", tags=["deliveries"])
 
@@ -135,7 +141,7 @@ def _determine_action(risk, active_count):
 # CRUD Endpoints
 # ──────────────────────────────────────────────
 
-@router.post("/create")
+@router.post("/create", dependencies=[Depends(role_required(["admin"]))])
 def create_delivery(payload: CreateDeliveryRequest):
     try:
         rec_request = RecommendRoutesRequest(
@@ -210,9 +216,103 @@ def create_delivery(payload: CreateDeliveryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{delivery_id}/start")
-def start_delivery(delivery_id: str = Path(...)):
-    """Start a delivery with load-balanced dispatch check."""
+@router.post("/{delivery_id}/move", dependencies=[Depends(role_required(["admin", "driver"]))])
+def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
+    """
+    Simulate movement: Advance the driver to the next waypoint(s).
+    Updates progress, location, and ETA in real-time.
+    """
+    try:
+        db = get_firestore_client()
+        del_ref = db.collection("deliveries").document(delivery_id)
+        doc = del_ref.get()
+        
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Delivery not found")
+            
+        data = doc.to_dict()
+        if data.get("status") not in ["dispatched", "in_transit"]:
+            return {"status": "ignored", "message": f"Delivery is '{data.get('status')}', not moving."}
+
+        route = data.get("route", [])
+        if not route:
+            raise HTTPException(status_code=400, detail="No route coordinates found for this delivery")
+
+        current_idx = data.get("current_index", 0)
+        new_idx = min(current_idx + step_size, len(route) - 1)
+        
+        if new_idx == current_idx and new_idx == len(route) - 1:
+            del_ref.update({"status": "delivered", "progress": 100, "updated_at": datetime.now(timezone.utc)})
+            return {"status": "at_destination", "message": "Driver has reached the destination."}
+
+        # Calculate new metrics
+        new_loc = route[new_idx]
+        progress = round((new_idx / (len(route) - 1)) * 100, 1)
+        
+        # UI-Friendly Status (Nearing)
+        orig_eta = data.get("total_eta", 30)
+        remaining_ratio = 1.0 - (new_idx / (len(route) - 1))
+        new_eta = round(orig_eta * remaining_ratio, 1)
+        
+        status = "in_transit"
+        if new_eta <= 10 and new_eta > 0:
+            status = "nearing"
+        elif new_idx == len(route) - 1:
+            status = "delivered"
+
+        # Decrement ETA and Distance linearly (simulated)
+        orig_dist = data.get("selected_route", {}).get("distance", 10)
+        new_dist = round(orig_dist * remaining_ratio, 2)
+
+        # Update Firestore
+        update_data = {
+            "current_index": new_idx,
+            "progress": progress,
+            "eta_remaining": new_eta,
+            "distance_remaining": new_dist,
+            "status": status,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        del_ref.update(update_data)
+        
+        # Sync to Driver
+        driver_id = data.get("driver_id")
+        if driver_id:
+            db.collection("drivers").document(driver_id).update({
+                "current_location": {"lat": new_loc["lat"], "lon": new_loc["lon"]},
+                "status": "in_transit"
+            })
+
+        return {
+            "status": "moving",
+            "delivery_id": delivery_id,
+            "new_index": new_idx,
+            "progress": progress,
+            "location": new_loc,
+            "eta_remaining": new_eta
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def _run_auto_simulation(delivery_id: str, interval: float, steps: int):
+    """Background task for auto-movement."""
+    while True:
+        try:
+            result = move_delivery(delivery_id, step_size=1)
+            if result["status"] in ["at_destination", "ignored"]:
+                break
+            time.sleep(interval)
+        except:
+            break
+
+@router.post("/{delivery_id}/simulate", dependencies=[Depends(role_required(["admin", "driver"]))])
+def start_simulation(delivery_id: str = Path(...), interval: float = 3.0):
+    """Trigger a background thread to move the driver every X seconds."""
+    thread = threading.Thread(target=_run_auto_simulation, args=(delivery_id, interval, 1))
+    thread.daemon = True
+    thread.start()
+    return {"status": "started", "message": f"Auto-tracking simulation started for {delivery_id}"}
     try:
         db = get_firestore_client()
         doc_ref = db.collection("deliveries").document(delivery_id)
@@ -265,7 +365,7 @@ def start_delivery(delivery_id: str = Path(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{delivery_id}/complete")
+@router.post("/{delivery_id}/complete", dependencies=[Depends(role_required(["admin", "driver"]))])
 def complete_delivery(delivery_id: str = Path(...)):
     try:
         db = get_firestore_client()
@@ -304,7 +404,7 @@ def complete_delivery(delivery_id: str = Path(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(role_required(["admin"]))])
 def get_all_deliveries():
     try:
         db = get_firestore_client()
@@ -329,7 +429,7 @@ def get_all_deliveries():
 # System Intelligence Endpoints
 # ──────────────────────────────────────────────
 
-@router.get("/insights")
+@router.get("/insights", dependencies=[Depends(role_required(["admin"]))])
 def get_system_insights():
     """Central Decision Engine — aggregates system state and generates decisions."""
     try:
@@ -467,7 +567,7 @@ class FleetScaleRequest(BaseModel):
     action: str = Field(..., description="scale_up | scale_down | reset")
     amount: int = Field(default=5, description="Number of agents to add/remove")
 
-@router.post("/fleet-scale")
+@router.post("/fleet-scale", dependencies=[Depends(role_required(["admin"]))])
 def scale_fleet(payload: FleetScaleRequest):
     """Dynamically adjust fleet capacity to respond to demand changes."""
     global FLEET_CAPACITY
@@ -498,7 +598,7 @@ def scale_fleet(payload: FleetScaleRequest):
 # Disruption Injection
 # ──────────────────────────────────────────────
 
-@router.post("/disrupt")
+@router.post("/disrupt", dependencies=[Depends(role_required(["admin"]))])
 def inject_disruption(payload: DisruptionRequest):
     """Inject a disruption event — escalates risk on affected deliveries and generates response plan."""
     try:
@@ -576,7 +676,7 @@ class WhatIfRequest(BaseModel):
     scenario: str = Field(..., description="demand_surge | route_failure | fleet_reduction | weather_crisis")
     multiplier: float = Field(default=2.0, description="Intensity multiplier")
 
-@router.post("/what-if")
+@router.post("/what-if", dependencies=[Depends(role_required(["admin"]))])
 def what_if_simulation(payload: WhatIfRequest):
     """Simulate hypothetical scenarios without modifying actual data."""
     try:

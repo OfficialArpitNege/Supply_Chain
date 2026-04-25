@@ -17,13 +17,20 @@ import {
 import { useApp } from '../context/AppContext';
 
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: MdDashboard, roles: ['admin', 'manager', 'staff', 'viewer'] },
-  { path: '/logistics', label: 'Logistics', icon: MdLocalShipping, roles: ['admin', 'manager', 'staff'] },
-  { path: '/inventory', label: 'Inventory', icon: MdInventory, roles: ['admin', 'manager', 'staff', 'viewer'] },
-  { path: '/suppliers', label: 'Suppliers', icon: MdPeople, roles: ['admin', 'manager'] },
-  { path: '/ai-insights', label: 'AI Insights', icon: MdPsychology, roles: ['admin', 'manager'] },
+  // Admin Only
+  { path: '/admin-dashboard', label: 'Admin Dashboard', icon: MdDashboard, roles: ['admin'] },
+  { path: '/control-tower', label: 'Control Tower', icon: MdAutoGraph, roles: ['admin'] },
+  { path: '/logistics', label: 'Logistics', icon: MdLocalShipping, roles: ['admin'] },
+  { path: '/inventory', label: 'Inventory', icon: MdInventory, roles: ['admin'] },
+  { path: '/suppliers', label: 'Suppliers', icon: MdPeople, roles: ['admin'] },
+  { path: '/ai-insights', label: 'AI Insights', icon: MdPsychology, roles: ['admin'] },
   { path: '/users', label: 'Users & RBAC', icon: MdSecurity, roles: ['admin'] },
   { path: '/automation', label: 'Automation', icon: MdAutoGraph, roles: ['admin'] },
+  
+  // Role Specific
+  { path: '/supplier-dashboard', label: 'Supplier Portal', icon: MdInventory, roles: ['supplier'] },
+  { path: '/driver-dashboard', label: 'Driver App', icon: MdLocalShipping, roles: ['driver'] },
+  { path: '/customer-dashboard', label: 'Marketplace', icon: MdPsychology, roles: ['customer'] },
 ];
 
 const AppShell = () => {
@@ -128,9 +135,15 @@ const AppShell = () => {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-slate-200">{currentUser?.email?.split('@')[0].toUpperCase() || 'USER'}</p>
-                <div className="flex items-center justify-end gap-1">
-                   <MdSecurity className="text-blue-500" size={10} />
-                   <p className="text-[9px] uppercase tracking-widest text-slate-500 font-black">{userRole}</p>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                   <div className={`px-2 py-0.5 rounded-md border text-[8px] font-black uppercase tracking-widest ${
+                     userRole === 'admin' ? 'bg-blue-500/10 border-blue-500/40 text-blue-400' :
+                     userRole === 'supplier' ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' :
+                     userRole === 'driver' ? 'bg-orange-500/10 border-orange-500/40 text-orange-400' :
+                     'bg-slate-500/10 border-slate-500/40 text-slate-400'
+                   }`}>
+                     {userRole}
+                   </div>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-blue-400 border border-slate-700 shadow-inner">

@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Real Pages
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Logistics from './pages/Logistics';
 import Inventory from './pages/Inventory';
@@ -15,6 +16,11 @@ import AIInsights from './pages/AIInsights';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Automation from './pages/Automation';
+import ControlTower from './pages/ControlTower';
+import SupplierDashboard from './pages/SupplierDashboard';
+import DriverDashboard from './pages/DriverDashboard';
+import CustomerMarketplace from './pages/CustomerMarketplace';
+import CustomerDashboard from './pages/CustomerDashboard';
 
 // Placeholders for remaining modules
 import { 
@@ -34,38 +40,46 @@ function App() {
             }} 
           />
           <Routes>
-            {/* Logic: Login is OUTSIDE the shell, Dashboard is INSIDE */}
+            {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             
             <Route path="/" element={<AppShell />}>
-              <Route path="dashboard" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager', 'staff', 'viewer']}>
+              {/* ADMIN ONLY ROUTES */}
+              <Route path="admin-dashboard" element={
+                <ProtectedRoute allowedRoles={['admin']}>
                   <Dashboard />
                 </ProtectedRoute>
               } />
               
+              <Route path="control-tower" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ControlTower />
+                </ProtectedRoute>
+              } />
+              
               <Route path="logistics" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <Logistics />
                 </ProtectedRoute>
               } />
               
               <Route path="inventory" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager', 'staff', 'viewer']}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <Inventory />
                 </ProtectedRoute>
               } />
               
               <Route path="suppliers" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <Suppliers />
                 </ProtectedRoute>
               } />
               
               <Route path="ai-insights" element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AIInsights />
                 </ProtectedRoute>
               } />
@@ -79,6 +93,28 @@ function App() {
               <Route path="automation" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Automation />
+                </ProtectedRoute>
+              } />
+
+              {/* ROLE SPECIFIC DASHBOARDS */}
+              <Route path="supplier-dashboard" element={
+                <ProtectedRoute allowedRoles={['supplier']}>
+                  <SupplierDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="driver-dashboard" element={
+                <ProtectedRoute allowedRoles={['driver']}>
+                  <DriverDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="customer-dashboard" element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <CustomerMarketplace />
+                </ProtectedRoute>
+              } />
+              <Route path="track/:orderId" element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <CustomerDashboard />
                 </ProtectedRoute>
               } />
             </Route>

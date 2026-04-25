@@ -8,6 +8,11 @@ from Backend.routes.analyze import router as analyze_router
 from Backend.routes.delay import router as delay_router
 from Backend.routes.demand import router as demand_router
 from Backend.routes.deliveries import router as deliveries_router
+from Backend.routes.orders import router as orders_router
+from Backend.routes.admin import router as admin_router
+from Backend.routes.demo import router as demo_router
+from Backend.routes.products import router as products_router
+from Backend.routes.supplier import router as supplier_router
 from Backend.services.model_service import health_check as model_health_check
 from Backend.utils.firebase_helper import get_active_deliveries_count
 from Backend.services.simulation_service import start_simulation
@@ -124,3 +129,9 @@ app.include_router(analyze_router)
 app.include_router(demand_router)
 app.include_router(delay_router)
 app.include_router(deliveries_router)
+app.include_router(orders_router)
+app.include_router(admin_router)
+app.include_router(demo_router)
+app.include_router(products_router)
+app.include_router(supplier_router)
+
