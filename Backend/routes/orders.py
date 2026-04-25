@@ -132,9 +132,26 @@ def _select_best_warehouse(db, items: List[OrderItem], customer_lat: float, cust
             })
 
     if not candidate_warehouses:
+        # Collect why it failed for better error messages
+        missing_skus = []
+        for item in items:
+            has_stock = False
+            for wh_id, stock in warehouse_stock.items():
+                if stock.get(item.sku, {}).get("available", 0) >= item.quantity:
+                    has_stock = True
+                    break
+            if not has_stock:
+                missing_skus.append(f"{item.name} ({item.sku})")
+
+        detail = "No warehouse can fulfill this order."
+        if missing_skus:
+            detail += f" Insufficient stock for: {', '.join(missing_skus)}."
+        else:
+            detail += " Items are in stock but not available in a single warehouse."
+
         raise HTTPException(
             status_code=409,
-            detail="No warehouse can fulfill this order. Check stock availability."
+            detail=detail
         )
 
     # Sort by distance (closest first)
@@ -413,6 +430,8 @@ def auto_assign_driver(order_id: str = Path(...)):
         # Update driver
         db.collection("drivers").document(driver_id).update({
             "status": "assigned",
+            "active_order_id": order_id,
+            "active_delivery_id": None,
             "updated_at": now
         })
 
@@ -490,6 +509,7 @@ def assign_driver(order_id: str = Path(...), payload: AssignDriverRequest = None
         # Update driver
         driver_ref.update({
             "status": "assigned",
+            "active_order_id": order_id, # ADDED
             "active_delivery_id": None,  # Will be set at dispatch
         })
 
@@ -645,8 +665,14 @@ def dispatch_order(order_id: str = Path(...)):
 
         # ── LOAD BALANCING CHECK (CRITICAL) ──
         active_on_route = 0
-        for doc in db.collection("deliveries").where("status", "in", ["dispatched", "in_transit"]).where("selected_route.route_id", "==", best_route.id).stream():
-            active_on_route += 1
+        try:
+            # Simplified query to avoid missing index errors during demo
+            for doc in db.collection("deliveries").where("status", "in", ["dispatched", "in_transit"]).stream():
+                ddata = doc.to_dict()
+                if ddata.get("selected_route", {}).get("route_id") == best_route.id:
+                    active_on_route += 1
+        except Exception as e:
+            print(f"Load balancing query failed (likely missing index): {e}")
             
         recommended_action = f"DISPATCH: Route {best_route.id} ({selection_mode})"
         if active_on_route >= 5:
@@ -669,7 +695,7 @@ def dispatch_order(order_id: str = Path(...)):
             "driver_id": driver_id,
             "warehouse_id": warehouse_id,
             "status": "dispatched",
-            "navigation_link": nav_link, # ADDED
+            "navigation_link": nav_link,
             "start_location": {"lat": wh_loc.get("lat"), "lon": wh_loc.get("lon")},
             "end_location": {"lat": cust_loc.get("lat"), "lon": cust_loc.get("lon")},
             "selected_route": {
@@ -728,10 +754,10 @@ def dispatch_order(order_id: str = Path(...)):
         items = order_data.get("items", [])
         total_units = sum(item.get("quantity", 0) for item in items)
 
-        from google.cloud.firestore_v1 import Increment
+        from firebase_admin import firestore
         db.collection("warehouses").document(warehouse_id).update({
-            "current_load": Increment(-total_units),
-            "current_inventory_load": Increment(-total_units),
+            "current_load": firestore.Increment(-total_units),
+            "current_inventory_load": firestore.Increment(-total_units),
             "updated_at": now,
         })
 
@@ -743,8 +769,8 @@ def dispatch_order(order_id: str = Path(...)):
                 .stream()
             for inv_doc in inv_docs:
                 db.collection("inventory").document(inv_doc.id).update({
-                    "quantity": Increment(-item.get("quantity", 0)),
-                    "reserved_quantity": Increment(-item.get("quantity", 0)),
+                    "quantity": firestore.Increment(-item.get("quantity", 0)),
+                    "reserved_quantity": firestore.Increment(-item.get("quantity", 0)),
                 })
 
         return {
@@ -837,6 +863,58 @@ def deliver_order(order_id: str = Path(...)):
 
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-accept", dependencies=[Depends(role_required(["admin"]))])
+def batch_accept_orders():
+    """
+    Bulk Stage 2: Accepts all currently 'pending' orders.
+    """
+    try:
+        db = get_firestore_client()
+        pending_orders = db.collection("orders").where("status", "==", "pending").stream()
+        
+        results = []
+        for doc in pending_orders:
+            try:
+                res = accept_order(doc.id)
+                results.append({"order_id": doc.id, "status": "success", "message": res.get("message")})
+            except Exception as e:
+                results.append({"order_id": doc.id, "status": "error", "message": str(e)})
+        
+        return {
+            "status": "success",
+            "processed": len(results),
+            "results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-dispatch", dependencies=[Depends(role_required(["admin"]))])
+def batch_dispatch_orders():
+    """
+    Bulk Stage 4: Dispatches all currently 'assigned' orders.
+    """
+    try:
+        db = get_firestore_client()
+        assigned_orders = db.collection("orders").where("status", "==", "assigned").stream()
+        
+        results = []
+        for doc in assigned_orders:
+            try:
+                res = dispatch_order(doc.id)
+                results.append({"order_id": doc.id, "status": "success", "delivery_id": res.get("delivery_id")})
+            except Exception as e:
+                results.append({"order_id": doc.id, "status": "error", "message": str(e)})
+        
+        return {
+            "status": "success",
+            "processed": len(results),
+            "results": results
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

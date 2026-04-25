@@ -42,17 +42,22 @@ def _ensure_baseline_data(db):
         for dr in sample_drivers:
             db.collection("drivers").document().set(dr)
 
-    # 3. Inventory
+    # 3. Sample Inventory (Aligned with Marketplace)
     inv_snap = db.collection("inventory").limit(1).get()
     if not inv_snap:
-        # Get a warehouse ID
-        wh_id = db.collection("warehouses").limit(1).get()[0].id
         sample_inventory = [
-            {"name": "Steel Rods", "sku": "SKU-001", "quantity": 500, "reserved_quantity": 0, "warehouse_id": wh_id},
-            {"name": "Cement Bags", "sku": "SKU-002", "quantity": 300, "reserved_quantity": 0, "warehouse_id": wh_id}
+            {"name": "Steel Rods (12mm)", "sku": "SKU-STL-12", "quantity": 500, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
+            {"name": "Premium Cement", "sku": "SKU-CEM-01", "quantity": 1000, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
+            {"name": "Industrial Bricks", "sku": "SKU-BRK-05", "quantity": 5000, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
+            {"name": "Copper Wiring", "sku": "SKU-COP-88", "quantity": 200, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_02", "category": "Electrical"},
         ]
-        for inv in sample_inventory:
-            db.collection("inventory").document().set(inv)
+        for item in sample_inventory:
+            db.collection("inventory").add({
+                **item,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            })
+        print("Inventory seeded.")
 
 def _run_full_demo():
     """Automated background worker for the demo flow."""

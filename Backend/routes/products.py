@@ -17,10 +17,18 @@ def search_products(q: str = Query("")):
     search_term = q.lower()
     for doc in docs:
         data = doc.to_dict()
-        if search_term in data.get("name", "").lower() or search_term in data.get("sku", "").lower():
-            results.append({
-                "id": doc.id,
-                **data
-            })
+        
+        # Calculate available quantity
+        qty = int(data.get("quantity", 0))
+        reserved = int(data.get("reserved_quantity", 0))
+        available = qty - reserved
+        
+        if available > 0:
+            if search_term in data.get("name", "").lower() or search_term in data.get("sku", "").lower():
+                results.append({
+                    "id": doc.id,
+                    **data,
+                    "available_quantity": available
+                })
             
     return results

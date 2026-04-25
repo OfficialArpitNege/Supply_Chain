@@ -26,6 +26,16 @@ import CustomerDashboard from './pages/CustomerDashboard';
 import { 
   NotFound 
 } from './pages/Placeholders';
+import { useApp } from './context/AppContext';
+
+const DashboardRedirect = () => {
+  const { userRole } = useApp();
+  if (userRole === 'admin') return <Navigate to="/admin-dashboard" replace />;
+  if (userRole === 'supplier') return <Navigate to="/supplier-dashboard" replace />;
+  if (userRole === 'customer') return <Navigate to="/customer-dashboard" replace />;
+  if (userRole === 'driver') return <Navigate to="/driver-dashboard" replace />;
+  return <Navigate to="/login" replace />;
+};
 
 function App() {
   return (
@@ -45,6 +55,13 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             
             <Route path="/" element={<Navigate to="/login" replace />} />
+            
+            {/* Unified Dashboard Redirect */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            } />
             
             <Route path="/" element={<AppShell />}>
               {/* ADMIN ONLY ROUTES */}
@@ -113,7 +130,7 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="track/:orderId" element={
-                <ProtectedRoute allowedRoles={['customer']}>
+                <ProtectedRoute allowedRoles={['customer', 'admin']}>
                   <CustomerDashboard />
                 </ProtectedRoute>
               } />

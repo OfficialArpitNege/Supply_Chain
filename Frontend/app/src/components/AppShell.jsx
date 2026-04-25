@@ -18,14 +18,14 @@ import { useApp } from '../context/AppContext';
 
 const navItems = [
   // Admin Only
-  { path: '/admin-dashboard', label: 'Admin Dashboard', icon: MdDashboard, roles: ['admin'] },
-  { path: '/control-tower', label: 'Control Tower', icon: MdAutoGraph, roles: ['admin'] },
+  { path: '/admin-dashboard', label: 'Dashboard', icon: MdDashboard, roles: ['admin'] },
+  { path: '/control-tower', label: 'Control Tower', icon: MdSecurity, roles: ['admin'] },
   { path: '/logistics', label: 'Logistics', icon: MdLocalShipping, roles: ['admin'] },
   { path: '/inventory', label: 'Inventory', icon: MdInventory, roles: ['admin'] },
   { path: '/suppliers', label: 'Suppliers', icon: MdPeople, roles: ['admin'] },
   { path: '/ai-insights', label: 'AI Insights', icon: MdPsychology, roles: ['admin'] },
-  { path: '/users', label: 'Users & RBAC', icon: MdSecurity, roles: ['admin'] },
   { path: '/automation', label: 'Automation', icon: MdAutoGraph, roles: ['admin'] },
+  { path: '/users', label: 'User Management', icon: MdSettings, roles: ['admin'] },
   
   // Role Specific
   { path: '/supplier-dashboard', label: 'Supplier Portal', icon: MdInventory, roles: ['supplier'] },

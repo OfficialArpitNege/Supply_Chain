@@ -171,25 +171,33 @@ const ControlTower: React.FC = () => {
             <MapContainer center={[19.0760, 72.8777]} zoom={12} style={{ height: '100%', width: '100%', background: '#06060a' }}>
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
               
-              {warehouses.map(w => (
-                <Marker key={w.id} position={[w.location.lat, w.location.lon]} icon={warehouseIcon}>
-                  <Popup><div className="text-black font-black uppercase text-xs p-1">{w.name}</div></Popup>
-                </Marker>
-              ))}
+              {warehouses.map(w => {
+                if (!w.location?.lat || !w.location?.lon) return null;
+                return (
+                  <Marker key={w.id} position={[w.location.lat, w.location.lon]} icon={warehouseIcon}>
+                    <Popup><div className="text-black font-black uppercase text-xs p-1">{w.name}</div></Popup>
+                  </Marker>
+                );
+              })}
 
               {deliveries.filter(d => d.status !== 'delivered' && d.route).map(d => {
                 const isSelected = selectedDelivery?.id === d.id;
                 const point = d.route[d.current_index || 0];
-                if (!point) return null;
+                const validRoute = d.route.filter((p: any) => p && p.lat !== undefined && p.lon !== undefined);
+
+                if (!point || point.lat === undefined || point.lon === undefined) return null;
+
                 return (
                   <React.Fragment key={d.id}>
-                    <Polyline 
-                      positions={d.route.map((p: any) => [p.lat, p.lon])} 
-                      color={isSelected ? '#3b82f6' : (d.risk_level === 'HIGH' ? '#ef4444' : '#1e3a8a')} 
-                      weight={isSelected ? 6 : 3} 
-                      opacity={isSelected ? 1 : 0.2}
-                      dashArray={isSelected ? '' : '10, 10'}
-                    />
+                    {validRoute.length > 1 && (
+                      <Polyline 
+                        positions={validRoute.map((p: any) => [p.lat, p.lon])} 
+                        color={isSelected ? '#3b82f6' : (d.risk_level === 'HIGH' ? '#ef4444' : '#1e3a8a')} 
+                        weight={isSelected ? 6 : 3} 
+                        opacity={isSelected ? 1 : 0.2}
+                        dashArray={isSelected ? '' : '10, 10'}
+                      />
+                    )}
                     <Marker position={[point.lat, point.lon]} icon={driverIcon} eventHandlers={{ click: () => setSelectedDelivery(d) }}>
                       <Popup><div className="text-black font-bold">DEL-{d.delivery_id?.slice(-4)}</div></Popup>
                     </Marker>

@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db } from '../config/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { MdLocationOn, MdAccessTime, MdInfo, MdPhone, MdChevronLeft } from 'react-icons/md';
 
 const driverIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2965/2965215.png',
-  iconSize: [35, 35],
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
 });
 
 const destIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3177/3177440.png',
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
   iconSize: [35, 35],
+  iconAnchor: [17, 35],
 });
+
+const MapRefocuser = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, 15);
+  }, [center, map]);
+  return null;
+};
 
 const CustomerDashboard: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -33,93 +44,120 @@ const CustomerDashboard: React.FC = () => {
 
   if (!delivery) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <h2 className="text-xl font-bold text-white">Locating your delivery...</h2>
-        <p className="text-gray-500 mt-2">Enter your Order ID in the URL to track live.</p>
+      <div className="h-[calc(100vh-100px)] bg-[#0F172A] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Locating Your Order</h2>
+        <p className="text-slate-400 mt-2 font-medium">Synchronizing with live fleet GPS...</p>
       </div>
     );
   }
 
-  const currentLoc = delivery.route[delivery.current_index];
+  const currentLoc = delivery.route?.[delivery.current_index || 0];
   const destLoc = delivery.end_location;
+  const isArrivingSoon = delivery.eta_remaining < 10 && delivery.status !== 'delivered';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-gray-100 flex flex-col">
-      {/* Header */}
-      <header className="p-6 bg-[#16161e] border-b border-gray-800">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-sm font-bold text-blue-400 uppercase tracking-widest">Live Tracking</h1>
-            <h2 className="text-xl font-black">{delivery.order_id}</h2>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500 font-bold uppercase">Estimated Arrival</p>
-            <h3 className="text-2xl font-black text-emerald-400">{delivery.eta_remaining} mins</h3>
-          </div>
+    <div className="h-[calc(100vh-100px)] bg-[#0F172A] text-slate-100 flex flex-col overflow-hidden rounded-[3rem] shadow-2xl border border-slate-800">
+      
+      {/* Header Panel */}
+      <header className="p-8 bg-slate-900/50 backdrop-blur-xl border-b border-slate-800 flex justify-between items-center z-20">
+        <div className="flex items-center gap-6">
+           <button onClick={() => window.history.back()} className="p-3 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all"><MdChevronLeft size={24} /></button>
+           <div>
+             <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Live Shipment Tracking</p>
+             <h2 className="text-3xl font-black tracking-tighter">#{delivery.order_id?.slice(-8)}</h2>
+           </div>
         </div>
+        
+        {isArrivingSoon && (
+          <div className="hidden md:flex items-center gap-4 bg-orange-500/10 border border-orange-500/30 px-6 py-3 rounded-2xl animate-pulse-subtle">
+             <div className="w-3 h-3 bg-orange-500 rounded-full animate-ping"></div>
+             <p className="text-sm font-black text-orange-400 uppercase tracking-widest">Arriving in {Math.round(delivery.eta_remaining)} Minutes</p>
+          </div>
+        )}
       </header>
 
-      {/* Map View */}
+      {/* Map Content */}
       <div className="flex-1 relative">
-        <MapContainer center={[currentLoc.lat, currentLoc.lon]} zoom={14} style={{ height: '100%', width: '100%' }}>
+        <MapContainer 
+           center={currentLoc ? [currentLoc.lat, currentLoc.lon] : [19.076, 72.877]} 
+           zoom={15} 
+           style={{ height: '100%', width: '100%', background: '#0F172A' }}
+           zoomControl={false}
+        >
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-          <Marker position={[currentLoc.lat, currentLoc.lon]} icon={driverIcon} />
-          <Marker position={[destLoc.lat, destLoc.lon]} icon={destIcon} />
-          {delivery.route && <Polyline positions={delivery.route.map((p: any) => [p.lat, p.lon])} color="#3b82f6" weight={5} opacity={0.4} dashArray="10, 10" />}
+          {currentLoc && <MapRefocuser center={[currentLoc.lat, currentLoc.lon]} />}
+          {currentLoc && <Marker position={[currentLoc.lat, currentLoc.lon]} icon={driverIcon} />}
+          {destLoc && <Marker position={[destLoc.lat, destLoc.lon]} icon={destIcon} />}
+          {delivery.route && (
+            <Polyline 
+               positions={delivery.route.map((p: any) => [p.lat, p.lon])} 
+               color="#3B82F6" 
+               weight={6} 
+               opacity={0.2} 
+            />
+          )}
         </MapContainer>
 
-        {/* Floating Status Card */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-[1000]">
-          <div className="bg-[#16161e] p-6 rounded-3xl border border-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        {/* Floating Tracking Card */}
+        <div className="absolute bottom-8 right-8 w-96 z-[1000] space-y-4">
+          
+          {isArrivingSoon && (
+            <div className="bg-orange-600 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500">
+               <MdAccessTime size={32} className="shrink-0" />
+               <p className="text-sm font-black uppercase leading-tight">Driver is arriving in less than 10 minutes!</p>
+            </div>
+          )}
+
+          <div className="bg-slate-900/90 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-slate-700 shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
             
-            {/* Timeline Steps */}
+            {/* Status Steps */}
             <div className="flex justify-between mb-8 relative">
-              <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-800 -translate-y-1/2 z-0"></div>
-              <div className="absolute top-1/2 left-0 h-0.5 bg-blue-500 -translate-y-1/2 z-0 transition-all duration-1000" 
-                   style={{ width: delivery.status === 'delivered' ? '100%' : delivery.status === 'in_transit' || delivery.status === 'nearing' ? '75%' : delivery.status === 'dispatched' ? '50%' : '25%' }}></div>
+              <div className="absolute top-2 left-0 w-full h-1 bg-slate-800 rounded-full"></div>
+              <div className="absolute top-2 left-0 h-1 bg-blue-500 rounded-full transition-all duration-1000" 
+                   style={{ width: delivery.status === 'delivered' ? '100%' : delivery.status === 'in_transit' || delivery.status === 'nearing' ? '75%' : '25%' }}></div>
               
-              {[
-                { id: 'placed', label: 'Placed', active: true },
-                { id: 'dispatched', label: 'Dispatched', active: ['dispatched', 'in_transit', 'nearing', 'delivered'].includes(delivery.status) },
-                { id: 'transit', label: 'In Transit', active: ['in_transit', 'nearing', 'delivered'].includes(delivery.status) },
-                { id: 'delivered', label: 'Delivered', active: delivery.status === 'delivered' }
-              ].map((step, i) => (
-                <div key={step.id} className="relative z-10 flex flex-col items-center">
-                  <div className={`w-4 h-4 rounded-full border-2 transition-all duration-500 ${step.active ? 'bg-blue-500 border-blue-400 scale-125 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-[#0a0a0f] border-gray-700'}`}></div>
-                  <span className={`text-[8px] font-bold uppercase mt-2 ${step.active ? 'text-blue-400' : 'text-gray-600'}`}>{step.label}</span>
-                </div>
-              ))}
+              {['Placed', 'Dispatched', 'Transit', 'Delivered'].map((step, i) => {
+                const isActive = (i === 0) || 
+                               (i === 1 && ['dispatched', 'in_transit', 'nearing', 'delivered'].includes(delivery.status)) ||
+                               (i === 2 && ['in_transit', 'nearing', 'delivered'].includes(delivery.status)) ||
+                               (i === 3 && delivery.status === 'delivered');
+                return (
+                  <div key={step} className="relative z-10 flex flex-col items-center">
+                    <div className={`w-5 h-5 rounded-full border-4 transition-all duration-500 ${isActive ? 'bg-blue-500 border-slate-900 scale-125' : 'bg-slate-800 border-slate-900'}`}></div>
+                    <span className={`text-[9px] font-black uppercase mt-3 tracking-widest ${isActive ? 'text-blue-400' : 'text-slate-600'}`}>{step}</span>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-2xl animate-bounce">
-                {delivery.status === 'delivered' ? '🎁' : '🚚'}
+            <div className="flex items-center gap-5 mb-8">
+              <div className="w-16 h-16 bg-blue-600/20 rounded-3xl flex items-center justify-center text-3xl">
+                {delivery.status === 'delivered' ? '✅' : '🚚'}
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase">Live Status</p>
-                <h4 className="text-lg font-black uppercase text-white tracking-tight">
-                  {delivery.status === 'nearing' ? 'Driver is arriving now!' : 
-                   delivery.status === 'in_transit' ? 'On the way to you' :
-                   delivery.status === 'delivered' ? 'Order Delivered!' :
-                   delivery.status.replace('_', ' ')}
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Status Overview</p>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">
+                  {delivery.status === 'nearing' ? 'Almost There!' : 
+                   delivery.status === 'in_transit' ? 'In Transit' :
+                   delivery.status === 'delivered' ? 'Delivered' : 'Processing'}
                 </h4>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#1c1c27] p-3 rounded-2xl border border-gray-800 text-center">
-                <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Distance</p>
-                <p className="text-lg font-black text-white">{delivery.distance_remaining} <span className="text-[10px] text-gray-500">km</span></p>
-              </div>
-              <div className="bg-[#1c1c27] p-3 rounded-2xl border border-gray-800 text-center">
-                <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">ETA</p>
-                <p className="text-lg font-black text-emerald-400">{Math.round(delivery.eta_remaining)} <span className="text-[10px] text-emerald-600">min</span></p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+               <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                 <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Distance</p>
+                 <p className="text-xl font-black text-white">{delivery.distance_remaining || '--'} <span className="text-[10px] text-slate-500">KM</span></p>
+               </div>
+               <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                 <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Arrival</p>
+                 <p className="text-xl font-black text-emerald-400">~{Math.round(delivery.eta_remaining || 0)} <span className="text-[10px] text-emerald-600">MIN</span></p>
+               </div>
             </div>
-            
-            <button className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20">
-               CONTACT LOGISTICS SUPPORT
+
+            <button className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-500/20">
+               <MdPhone size={18} /> Support Line
             </button>
           </div>
         </div>
