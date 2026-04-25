@@ -19,7 +19,6 @@ import { useApp } from '../context/AppContext';
 const navItems = [
   // Admin Only
   { path: '/admin-dashboard', label: 'Dashboard', icon: MdDashboard, roles: ['admin'] },
-  { path: '/control-tower', label: 'Control Tower', icon: MdSecurity, roles: ['admin'] },
   { path: '/logistics', label: 'Logistics', icon: MdLocalShipping, roles: ['admin'] },
   { path: '/inventory', label: 'Inventory', icon: MdInventory, roles: ['admin'] },
   { path: '/suppliers', label: 'Suppliers', icon: MdPeople, roles: ['admin'] },
@@ -30,7 +29,7 @@ const navItems = [
   // Role Specific
   { path: '/supplier-dashboard', label: 'Supplier Portal', icon: MdInventory, roles: ['supplier'] },
   { path: '/driver-dashboard', label: 'Driver App', icon: MdLocalShipping, roles: ['driver'] },
-  { path: '/customer-dashboard', label: 'Marketplace', icon: MdPsychology, roles: ['customer'] },
+  { path: '/customer-dashboard', label: 'Tracking Hub', icon: MdPsychology, roles: ['customer'] },
 ];
 
 const AppShell = () => {

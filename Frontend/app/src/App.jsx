@@ -16,7 +16,6 @@ import AIInsights from './pages/AIInsights';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Automation from './pages/Automation';
-import ControlTower from './pages/ControlTower';
 import SupplierDashboard from './pages/SupplierDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import CustomerMarketplace from './pages/CustomerMarketplace';
@@ -71,12 +70,6 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              <Route path="control-tower" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <ControlTower />
-                </ProtectedRoute>
-              } />
-              
               <Route path="logistics" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Logistics />
@@ -125,6 +118,11 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="customer-dashboard" element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <CustomerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="marketplace" element={
                 <ProtectedRoute allowedRoles={['customer']}>
                   <CustomerMarketplace />
                 </ProtectedRoute>

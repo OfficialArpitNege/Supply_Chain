@@ -54,3 +54,18 @@ def get_active_deliveries_count() -> int:
         print(f"FIREBASE ERROR: {exc}")
         return -1
 
+def add_notification(n_type: str, message: str, priority: str = "NORMAL"):
+    """Push a live alert to the notifications collection."""
+    from datetime import datetime, timezone
+    try:
+        db = get_firestore_client()
+        db.collection("notifications").add({
+            "type": n_type,
+            "message": message,
+            "priority": priority,
+            "created_at": datetime.now(timezone.utc),
+            "read": False
+        })
+    except Exception as e:
+        print(f"Failed to add notification: {e}")
+

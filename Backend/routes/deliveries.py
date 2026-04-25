@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from Backend.services.model_service import predict_delay as predict_delay_model
 from Backend.services.model_service import predict_demand as predict_demand_model
-from Backend.utils.firebase_helper import get_firestore_client, get_active_deliveries_count
+from Backend.utils.firebase_helper import get_firestore_client, get_active_deliveries_count, add_notification
 
 import threading
 import time
@@ -186,6 +186,7 @@ def create_delivery(payload: CreateDeliveryRequest):
             "status": "waiting",
             "start_location": payload.start_location.model_dump(),
             "end_location": payload.end_location.model_dump(),
+            "route": [{"lat": p[0], "lon": p[1]} for p in best_route.route_path],
             "selected_route": {
                 "route_id": best_route.id,
                 "distance": round(best_route.distance, 2),
@@ -197,6 +198,7 @@ def create_delivery(payload: CreateDeliveryRequest):
                 "distance": round(backup.distance, 2),
                 "eta": round(backup.traffic_eta, 2),
                 "traffic_speed": round(backup.traffic_speed, 2),
+                "route_path": [{"lat": p[0], "lon": p[1]} for p in backup.route_path]
             } if backup else None,
             "risk_level": risk,
             "demand_level": demand_level,
@@ -239,7 +241,9 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
             raise HTTPException(status_code=400, detail="No route coordinates found for this delivery")
 
         current_idx = data.get("current_index", 0)
-        new_idx = min(current_idx + step_size, len(route) - 1)
+        # Move by 25% of total route length per click if step_size is 1 (default)
+        move_amount = max(1, len(route) // 4) if step_size == 1 else step_size
+        new_idx = min(current_idx + move_amount, len(route) - 1)
         
         if new_idx == current_idx and new_idx == len(route) - 1:
             del_ref.update({"status": "delivered", "progress": 100, "updated_at": datetime.now(timezone.utc)})
@@ -274,6 +278,13 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
             "updated_at": datetime.now(timezone.utc)
         }
         del_ref.update(update_data)
+
+        # Trigger Notifications
+        customer_name = data.get("customer_name", "Customer")
+        if status == "nearing" and data.get("status") != "nearing":
+             add_notification("DELIVERY", f"📦 Driver is ~10 mins away from {customer_name}!", "HIGH")
+        elif status == "delivered" and data.get("status") != "delivered":
+             add_notification("DELIVERY", f"✅ Delivery #{delivery_id[:8]} reached {customer_name} successfully.", "NORMAL")
         
         # Sync to Driver
         driver_id = data.get("driver_id")
@@ -625,12 +636,34 @@ def inject_disruption(payload: DisruptionRequest):
                     "recommended_action": f"DISRUPTION: {payload.type} on {payload.affected_route} — consider backup route",
                 }
 
-                # If has backup route and is active, suggest switch
+                # --- SMART REROUTING LOGIC ---
                 backup = data.get("backup_route")
                 action_desc = ""
-                if backup and status == "active":
-                    action_desc = f"Reroute to {backup.get('route_id', 'backup')} (ETA: {backup.get('eta', '?')} min)"
-                    update_data["recommended_action"] = f"SWITCH to {backup.get('route_id', 'backup')} — {payload.type} detected"
+                
+                if backup and backup.get("route_path") and status in ("active", "in_transit", "dispatched", "nearing"):
+                    # SWAP TO BACKUP ROUTE
+                    old_route_id = route_id
+                    new_route_id = backup.get("route_id", "backup")
+                    
+                    update_data.update({
+                        "selected_route": {
+                            "route_id": new_route_id,
+                            "distance": backup.get("distance"),
+                            "eta": backup.get("eta"),
+                            "traffic_speed": backup.get("traffic_speed"),
+                        },
+                        "route": backup.get("route_path"),
+                        "current_index": 0, # Reset to start of new route for demo simplicity
+                        "progress": 0,
+                        "rerouted": True,
+                        "reroute_reason": f"System Alert: {payload.type.replace('_', ' ').title()} detected on {old_route_id}. Switched to {new_route_id}.",
+                        "rerouted_at": datetime.now(timezone.utc),
+                        "recommended_action": "CRITICAL: Route blocked. Switched to alternate route automatically.",
+                        "status": "in_transit"
+                    })
+                    action_desc = f"AUTOMATIC REROUTE: Switched from {old_route_id} to {new_route_id} due to {payload.type}"
+                    add_notification("SYSTEM", f"🚨 Auto-Rerouted Delivery #{delivery_id[:8]} due to {payload.type.replace('_', ' ')}", "HIGH")
+                
                 elif status == "waiting":
                     action_desc = "Dispatch delayed — waiting for disruption to clear"
                     update_data["recommended_action"] = f"HOLD: {payload.type} blocking route — delay dispatch"

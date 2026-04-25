@@ -36,6 +36,7 @@ class PlaceOrderRequest(BaseModel):
     customer_name: str = Field(..., min_length=1)
     customer_phone: str = Field(..., min_length=6)
     customer_location: CustomerLocation
+    customer_address: str = Field(..., min_length=1)
     items: List[OrderItem] = Field(..., min_length=1)
     priority: str = Field(default="normal")
     notes: Optional[str] = None
@@ -180,6 +181,7 @@ def place_order(payload: PlaceOrderRequest):
             "order_id": order_id,
             "customer_name": payload.customer_name,
             "customer_phone": payload.customer_phone,
+            "customer_address": payload.customer_address,
             "customer_location": payload.customer_location.model_dump(),
             "items": [item.model_dump() for item in payload.items],
             "warehouse_id": None,       # Not assigned until accepted

@@ -241,6 +241,15 @@ def create_warehouse(payload: WarehouseCreateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/warehouses/{warehouse_id}", dependencies=[Depends(role_required(["admin"]))])
+def delete_warehouse(warehouse_id: str = Path(...)):
+    try:
+        db = get_firestore_client()
+        db.collection("warehouses").document(warehouse_id).delete()
+        return {"status": "success", "message": f"Warehouse {warehouse_id} deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Driver Management ──
 
 @router.get("/drivers", dependencies=[Depends(role_required(["admin"]))])
@@ -277,5 +286,21 @@ def list_inventory():
         db = get_firestore_client()
         docs = db.collection("inventory").stream()
         return [{**doc.to_dict(), "id": doc.id} for doc in docs]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/reset-drivers", dependencies=[Depends(role_required(["admin"]))])
+def reset_drivers():
+    try:
+        db = get_firestore_client()
+        docs = db.collection("drivers").stream()
+        count = 0
+        for doc in docs:
+            db.collection("drivers").document(doc.id).update({
+                "status": "available",
+                "active_delivery_id": None,
+                "active_order_id": None
+            })
+            count += 1
+        return {"status": "success", "reset_count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
