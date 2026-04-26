@@ -23,8 +23,9 @@ const CustomerMarketplace: React.FC = () => {
   const [location, setLocation] = useState({ lat: 19.1136, lon: 72.8697 }); // Default Andheri
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [myShipments, setMyShipments] = useState<any[]>([]);
-  const { callApi } = useApp();
+  const { callApi, currentUser } = useApp();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,14 +53,15 @@ const CustomerMarketplace: React.FC = () => {
       const data = await callApi('/orders/place', {
         method: 'POST',
         body: JSON.stringify({
-          customer_name: 'Guest User',
+          customer_name: currentUser?.displayName || 'Guest User',
+          customer_id: currentUser?.uid,
           customer_phone: phone,
           customer_address: address,
           customer_location: location,
           items: [{
             sku: cart.sku,
             name: cart.name,
-            quantity: 1
+            quantity: quantity
           }],
           priority: 'normal'
         })
@@ -93,7 +95,7 @@ const CustomerMarketplace: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest px-2">Available Results</h3>
             {products.length === 0 && <p className="text-gray-600 px-2 italic">No products found matching your search.</p>}
             {products.map(p => (
-              <div key={p.id} onClick={() => setCart(p)} className={`p-6 rounded-2xl border transition-all cursor-pointer ${cart?.id === p.id ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-900/20' : 'bg-[#16161e] border-gray-800 hover:border-gray-600'}`}>
+              <div key={p.id} onClick={() => { setCart(p); setQuantity(1); }} className={`p-6 rounded-2xl border transition-all cursor-pointer ${cart?.id === p.id ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-900/20' : 'bg-[#16161e] border-gray-800 hover:border-gray-600'}`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-lg font-black">{p.name}</h4>
@@ -123,6 +125,27 @@ const CustomerMarketplace: React.FC = () => {
                     
                     <div className="space-y-4">
                       <div>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Order Quantity</label>
+                        <div className="flex items-center gap-4">
+                          <input 
+                            type="number"
+                            min="1"
+                            max={cart.quantity}
+                            value={quantity}
+                            onChange={e => setQuantity(Math.max(1, Math.min(cart.quantity, parseInt(e.target.value) || 1)))}
+                            className="flex-1 bg-[#0a0a0f] border border-gray-800 p-4 rounded-2xl outline-none text-sm focus:border-blue-500 font-black text-white"
+                          />
+                          <div className="text-right px-4">
+                             <p className="text-[8px] text-gray-500 uppercase font-black">Available</p>
+                             <p className="text-sm font-black text-emerald-400">{cart.quantity} units</p>
+                          </div>
+                        </div>
+                        {quantity > cart.quantity && (
+                          <p className="text-red-500 text-[10px] mt-1 font-bold italic">Only {cart.quantity} units available</p>
+                        )}
+                      </div>
+
+                      <div>
                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Full Delivery Address</label>
                         <textarea 
                           value={address}
@@ -142,7 +165,11 @@ const CustomerMarketplace: React.FC = () => {
                       </div>
                     </div>
 
-                    <button onClick={placeOrder} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-95 uppercase tracking-widest text-xs">
+                    <button 
+                      onClick={placeOrder} 
+                      disabled={quantity <= 0 || quantity > cart.quantity}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-95 uppercase tracking-widest text-xs"
+                    >
                       DEPLOY ORDER
                     </button>
                   </div>

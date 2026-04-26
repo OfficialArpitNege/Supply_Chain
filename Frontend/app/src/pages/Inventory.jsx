@@ -80,7 +80,7 @@ const Inventory = () => {
     const outCount = items.filter(i => Number(i.quantity) === 0).length;
     return {
       totalSKUs: items.length,
-      totalUnits: items.reduce((acc, i) => acc + Number(i.quantity), 0),
+      totalUnits: items.reduce((acc, i) => acc + Number(i.quantity) + Number(i.reserved_quantity || 0), 0),
       lowStock: lowCount,
       outOfStock: outCount
     };

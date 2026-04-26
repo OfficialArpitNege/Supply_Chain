@@ -142,8 +142,8 @@ def _fetch_real_route_geometry(
     dist_est = geo_dist * 1.2
     dur_est = (dist_est / 60.0) * 3600.0
     path = []
-    # Create a 40-point 'Golden Trajectory' with variation for each route alternative
-    points_count = 41
+    # Create a 120-point 'Golden Trajectory' for ultra-smooth road-like visualization
+    points_count = 121
     # Unique offset for each variation index (0, 1, 2)
     var_offset = variation_index * 0.15 
     for i in range(points_count):
@@ -151,8 +151,10 @@ def _fetch_real_route_geometry(
         lt = start_lat + (end_lat - start_lat) * ratio
         ln = start_lon + (end_lon - start_lon) * ratio
         # Add 'highway-like' bends using decaying sine waves + unique variation
-        bend = math.sin(ratio * math.pi * (3 + variation_index)) * (geo_dist / 1200.0) * (0.4 + var_offset)
-        path.append([lt + (bend * 0.15), ln + (bend * 0.08)])
+        # We use a more complex combination of sines to mimic real road bends
+        bend = (math.sin(ratio * math.pi * (3 + variation_index)) * 0.7 + 
+                math.sin(ratio * math.pi * 7) * 0.3) * (geo_dist / 1000.0) * (0.5 + var_offset)
+        path.append([lt + (bend * 0.12), ln + (bend * 0.08)])
 
     return {
         "raw_coordinates": [[p[1], p[0]] for p in path],

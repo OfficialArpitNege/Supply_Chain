@@ -38,6 +38,7 @@ class PlaceOrderRequest(BaseModel):
     customer_location: CustomerLocation
     customer_address: str = Field(..., min_length=1)
     items: List[OrderItem] = Field(..., min_length=1)
+    customer_id: Optional[str] = None
     priority: str = Field(default="normal")
     notes: Optional[str] = None
 
@@ -102,8 +103,7 @@ def _select_best_warehouse(db, items: List[OrderItem], customer_lat: float, cust
 
         sku = idata.get("sku")
         qty = int(idata.get("quantity", 0))
-        reserved = int(idata.get("reserved_quantity", 0))
-        available = qty - reserved
+        available = qty
         warehouse_stock[wid][sku] = {
             "available": available,
             "doc_id": idoc.id
@@ -186,6 +186,7 @@ def place_order(payload: PlaceOrderRequest):
             "items": [item.model_dump() for item in payload.items],
             "warehouse_id": None,       # Not assigned until accepted
             "status": "pending",
+            "customer_id": payload.customer_id,
             "driver_id": None,
             "delivery_id": None,
             "priority": payload.priority,
@@ -278,12 +279,13 @@ def accept_order(order_id: str = Path(...), payload: AcceptOrderRequest = Accept
                 inv_snap = inv_ref.get(transaction=transaction)
                 inv_data = inv_snap.to_dict()
                 
-                available = inv_data.get("quantity", 0) - inv_data.get("reserved_quantity", 0)
+                available = inv_data.get("quantity", 0)
                 if available < item.quantity:
                     raise HTTPException(status_code=400, detail=f"Insufficient stock for {item.sku} during reservation")
                 
-                # Reserve
+                # Reserve (Atomic Update as per requirement)
                 transaction.update(inv_ref, {
+                    "quantity": Increment(-item.quantity),
                     "reserved_quantity": Increment(item.quantity)
                 })
                 reserved_skus.append({"sku": item.sku, "reserved": item.quantity})
@@ -297,6 +299,7 @@ def accept_order(order_id: str = Path(...), payload: AcceptOrderRequest = Accept
         order_ref.update({
             "status": "accepted",
             "warehouse_id": selected["warehouse_id"],
+            "accepted_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         })
 
@@ -442,6 +445,7 @@ def auto_assign_driver(order_id: str = Path(...)):
         order_ref.update({
             "status": "assigned",
             "driver_id": driver_id,
+            "driver_assigned_at": now,
             "updated_at": now,
         })
 
@@ -520,6 +524,7 @@ def assign_driver(order_id: str = Path(...), payload: AssignDriverRequest = None
         order_ref.update({
             "status": "assigned",
             "driver_id": payload.driver_id,
+            "driver_assigned_at": now,
             "updated_at": now,
         })
 
@@ -808,6 +813,7 @@ def dispatch_order(order_id: str = Path(...)):
         order_ref.update({
             "status": "dispatched",
             "delivery_id": delivery_id,
+            "dispatched_at": now,
             "updated_at": now,
         })
 
@@ -835,8 +841,9 @@ def dispatch_order(order_id: str = Path(...)):
                     .where("sku", "==", item.get("sku")) \
                     .stream()
                 for inv_doc in inv_docs:
+                    # Finalize inventory: ONLY decrement reserved_quantity
+                    # available (quantity) was already decremented at accept stage
                     db.collection("inventory").document(inv_doc.id).update({
-                        "quantity": Increment(-item.get("quantity", 0)),
                         "reserved_quantity": Increment(-item.get("quantity", 0)),
                     })
         except Exception as e:
@@ -921,6 +928,7 @@ def deliver_order(order_id: str = Path(...)):
         # Update order
         order_ref.update({
             "status": "delivered",
+            "delivered_at": now,
             "updated_at": now,
         })
 
@@ -989,20 +997,102 @@ def batch_dispatch_orders():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{order_id}/cancel", dependencies=[Depends(role_required(["admin", "customer"]))])
+def cancel_order(order_id: str = Path(...)):
+    """
+    Cancel an order and restore inventory if it was already reserved.
+    """
+    try:
+        db = get_firestore_client()
+        order_ref = db.collection("orders").document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        order_data = order_doc.to_dict()
+        current_status = order_data.get("status")
+
+        if current_status in ["dispatched", "in_transit", "delivered"]:
+            raise HTTPException(status_code=400, detail=f"Cannot cancel order in '{current_status}' status")
+
+        if current_status == "cancelled":
+            return {"status": "success", "message": "Order already cancelled"}
+
+        # If order was accepted/assigned, we need to restore stock
+        if current_status in ["accepted", "assigned"]:
+            items = order_data.get("items", [])
+            warehouse_id = order_data.get("warehouse_id")
+            
+            for item in items:
+                sku = item.get("sku")
+                qty = item.get("quantity", 0)
+                
+                # Find the inventory record
+                inv_docs = db.collection("inventory") \
+                    .where("warehouse_id", "==", warehouse_id) \
+                    .where("sku", "==", sku) \
+                    .stream()
+                
+                for inv_doc in inv_docs:
+                    db.collection("inventory").document(inv_doc.id).update({
+                        "quantity": Increment(qty),
+                        "reserved_quantity": Increment(-qty)
+                    })
+
+        # If it was assigned to a driver, free the driver
+        driver_id = order_data.get("driver_id")
+        if driver_id:
+            db.collection("drivers").document(driver_id).update({
+                "status": "available",
+                "active_order_id": None,
+                "active_delivery_id": None
+            })
+
+        # Update order status
+        order_ref.update({
+            "status": "cancelled",
+            "cancelled_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        })
+
+        return {
+            "status": "success",
+            "order_id": order_id,
+            "message": "Order cancelled successfully and stock restored."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error cancelling order: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/")
-def list_orders(status: Optional[str] = None):
-    """List all orders, optionally filtered by status."""
+def list_orders(status: Optional[str] = None, customer_id: Optional[str] = None):
+    """List all orders with optional filters and sorting."""
     try:
         db = get_firestore_client()
         q = db.collection("orders")
+        
         if status:
             q = q.where("status", "==", status)
+        if customer_id:
+            q = q.where("customer_id", "==", customer_id)
+
+        # Sort by created_at DESC
+        q = q.order_by("created_at", direction=firestore.Query.DESCENDING)
 
         orders = []
         for doc in q.stream():
             data = doc.to_dict()
-            # Serialize datetime objects for JSON
-            for key in ("created_at", "updated_at"):
+            # Serialize all timestamp fields
+            ts_fields = [
+                "created_at", "updated_at", "accepted_at", 
+                "driver_assigned_at", "dispatched_at", 
+                "delivered_at", "cancelled_at"
+            ]
+            for key in ts_fields:
                 if data.get(key) and hasattr(data[key], "isoformat"):
                     data[key] = data[key].isoformat()
             orders.append(data)

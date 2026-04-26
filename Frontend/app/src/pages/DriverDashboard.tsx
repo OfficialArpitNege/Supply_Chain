@@ -273,13 +273,24 @@ const DriverDashboard: React.FC = () => {
               <MapContainer center={[currentPoint.lat, currentPoint.lon]} zoom={14} style={{ height: '100%', width: '100%', background: '#0f172a' }}>
                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                 
-                {/* Route Line */}
+                {/* Old Route (Faded) if rerouted */}
+                {activeDelivery.rerouted && activeDelivery.old_route && (
+                  <Polyline 
+                    positions={activeDelivery.old_route.map((p: any) => [p.lat, p.lon])} 
+                    color="#94a3b8" 
+                    weight={3} 
+                    opacity={0.2}
+                    dashArray="5, 10"
+                  />
+                )}
+
+                {/* Main Route Line */}
                 {activeDelivery.route && (
                   <Polyline 
                     positions={activeDelivery.route.map((p: any) => [p.lat, p.lon])} 
-                    color="#3b82f6" 
-                    weight={5} 
-                    opacity={0.6}
+                    color={activeDelivery.rerouted ? "#10b981" : "#3b82f6"} 
+                    weight={6} 
+                    opacity={0.8}
                   />
                 )}
 

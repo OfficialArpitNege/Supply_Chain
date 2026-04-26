@@ -182,6 +182,17 @@ const Dashboard = () => {
     }
   };
 
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Cancel this order? Stock will be restored.")) return;
+    const tid = toast.loading("Cancelling order...");
+    try {
+      await callApi(`/orders/${orderId}/cancel`, { method: 'POST' });
+      toast.success("Order cancelled", { id: tid });
+    } catch (e) {
+      toast.error(e.message, { id: tid });
+    }
+  };
+
   const handleDisruption = async (type) => {
     try {
       await callApi('/deliveries/disrupt', {
@@ -220,8 +231,8 @@ const Dashboard = () => {
          </button>
       </div>
 
-      {/* --- Top Section --- */}
-      <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
+      {/* Dashboard Grid */}
+      <div className="flex-1 min-h-0 grid grid-cols-12 gap-6 h-full">
 
         {/* 1. Incoming Requests */}
         <div className="col-span-3 flex flex-col bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl overflow-hidden">
@@ -250,10 +261,15 @@ const Dashboard = () => {
                       <span className="text-[9px] font-black text-slate-500 uppercase">{new Date(o.created_at?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <h4 className="text-sm font-black text-white truncate">{o.customer_name}</h4>
-                    <p className="text-[10px] text-slate-400 mb-4">{o.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}</p>
+                    <div className="flex items-center gap-2 mt-1 mb-4">
+                      <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-tighter">
+                        {o.items?.map(i => `${i.quantity} units`).join(', ')}
+                      </span>
+                      <p className="text-[10px] text-slate-400 truncate">{o.items?.map(i => i.name).join(', ')}</p>
+                    </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handleAcceptOrder(o.id)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all">Accept</button>
-                      <button className="px-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-xl transition-all"><MdCancel /></button>
+                      <button onClick={() => handleAcceptOrder(o.id)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[9px] font-black uppercase transition-all shadow-lg shadow-blue-900/20">Accept</button>
+                      <button onClick={() => handleCancelOrder(o.id)} className="px-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-xl transition-all border border-slate-700"><MdCancel /></button>
                     </div>
                   </div>
                 ))
@@ -363,12 +379,23 @@ const Dashboard = () => {
 
                   return (
                     <React.Fragment key={d.id}>
+                      {/* Old Route (Faded) if rerouted */}
+                      {d.rerouted && d.old_route && d.old_route.length > 1 && (
+                        <Polyline
+                          positions={d.old_route.map(p => [p.lat, p.lon])}
+                          color="#94A3B8"
+                          weight={2}
+                          opacity={0.2}
+                          dashArray="5, 10"
+                        />
+                      )}
+
                       {validRoute.length > 1 && (
                         <Polyline
                           positions={validRoute.map(p => [p.lat, p.lon])}
-                          color={isSelected ? '#3B82F6' : (d.risk_level === 'HIGH' ? '#EF4444' : '#64748B')}
-                          weight={isSelected ? 6 : 2}
-                          opacity={isSelected ? 1 : 0.3}
+                          color={isSelected ? '#3B82F6' : (d.risk_level === 'HIGH' ? '#EF4444' : (d.rerouted ? '#10B981' : '#64748B'))}
+                          weight={isSelected ? 6 : 3}
+                          opacity={isSelected ? 1 : 0.6}
                         />
                       )}
                       <Marker position={[point.lat, point.lon]} icon={driverIcon} eventHandlers={{ click: () => setSelectedDelivery(d) }}>

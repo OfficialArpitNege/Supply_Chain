@@ -239,12 +239,21 @@ const CustomerDashboard: React.FC = () => {
                     {activeDelivery?.end_location && (
                       <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} icon={destIcon} />
                     )}
+                    {activeDelivery?.rerouted && activeDelivery.old_route && (
+                      <Polyline 
+                        positions={activeDelivery.old_route.map((p: any) => [p.lat, p.lon])} 
+                        color="#94A3B8" 
+                        weight={2} 
+                        opacity={0.15}
+                        dashArray="5, 10"
+                      />
+                    )}
                     {activeDelivery?.route && (
                       <Polyline 
                         positions={activeDelivery.route.map((p: any) => [p.lat, p.lon])} 
-                        color="#3B82F6" 
-                        weight={4} 
-                        opacity={0.3} 
+                        color={activeDelivery.rerouted ? "#10B981" : "#3B82F6"} 
+                        weight={5} 
+                        opacity={0.7} 
                       />
                     )}
                   </MapContainer>

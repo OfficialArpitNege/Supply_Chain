@@ -241,8 +241,8 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
             raise HTTPException(status_code=400, detail="No route coordinates found for this delivery")
 
         current_idx = data.get("current_index", 0)
-        # Move by 25% of total route length per click if step_size is 1 (default)
-        move_amount = max(1, len(route) // 4) if step_size == 1 else step_size
+        # Advance point-by-point for smooth road-following movement
+        move_amount = step_size
         new_idx = min(current_idx + move_amount, len(route) - 1)
         
         if new_idx == current_idx and new_idx == len(route) - 1:
@@ -636,39 +636,67 @@ def inject_disruption(payload: DisruptionRequest):
                     "recommended_action": f"DISRUPTION: {payload.type} on {payload.affected_route} — consider backup route",
                 }
 
-                # --- SMART REROUTING LOGIC ---
-                backup = data.get("backup_route")
-                action_desc = ""
+                # --- DYNAMIC LIVE REROUTING ---
+                # 1. Get current position for rerouting
+                current_idx = data.get("current_index", 0)
+                route_points = data.get("route", [])
+                current_pos = route_points[current_idx] if current_idx < len(route_points) else data.get("start_location")
                 
-                if backup and backup.get("route_path") and status in ("active", "in_transit", "dispatched", "nearing"):
-                    # SWAP TO BACKUP ROUTE
-                    old_route_id = route_id
-                    new_route_id = backup.get("route_id", "backup")
+                # 2. Call routing engine for NEW options from CURRENT position
+                try:
+                    rec_request = RecommendRoutesRequest(
+                        start_lat=current_pos["lat"],
+                        start_lon=current_pos["lon"],
+                        end_lat=data["end_location"]["lat"],
+                        end_lon=data["end_location"]["lon"]
+                    )
+                    # Force variety to avoid the disrupted route if possible
+                    new_recommendations = recommend_routes(rec_request)
+                    
+                    # Filter out the disrupted route ID if it appears in new options
+                    valid_options = [r for r in new_recommendations.routes if r.id != payload.affected_route]
+                    if not valid_options:
+                        valid_options = new_recommendations.routes
+                        
+                    best_new = max(valid_options, key=lambda r: r.score)
+                    
+                    # 3. Store OLD route for visualization and update to NEW route
+                    old_route = data.get("route", [])
+                    new_route_path = [{"lat": p[0], "lon": p[1]} for p in best_new.route_path]
                     
                     update_data.update({
                         "selected_route": {
-                            "route_id": new_route_id,
-                            "distance": backup.get("distance"),
-                            "eta": backup.get("eta"),
-                            "traffic_speed": backup.get("traffic_speed"),
+                            "route_id": best_new.id,
+                            "distance": round(best_new.distance, 2),
+                            "eta": round(best_new.traffic_eta, 2),
+                            "traffic_speed": round(best_new.traffic_speed, 2),
                         },
-                        "route": backup.get("route_path"),
-                        "current_index": 0, # Reset to start of new route for demo simplicity
-                        "progress": 0,
+                        "route": new_route_path,
+                        "old_route": old_route, # Kept for frontend "faded" visualization
+                        "current_index": 0, # Start at the beginning of the new segment
+                        "progress": data.get("progress", 0), # Maintain progress context
                         "rerouted": True,
-                        "reroute_reason": f"System Alert: {payload.type.replace('_', ' ').title()} detected on {old_route_id}. Switched to {new_route_id}.",
+                        "reroute_reason": f"Dynamic Reroute: {payload.type.replace('_', ' ').title()} on {payload.affected_route}. Recalculated optimal path.",
                         "rerouted_at": datetime.now(timezone.utc),
-                        "recommended_action": "CRITICAL: Route blocked. Switched to alternate route automatically.",
+                        "recommended_action": "CRITICAL: Disruption detected. System has recalculated the most efficient path.",
                         "status": "in_transit"
                     })
-                    action_desc = f"AUTOMATIC REROUTE: Switched from {old_route_id} to {new_route_id} due to {payload.type}"
-                    add_notification("SYSTEM", f"🚨 Auto-Rerouted Delivery #{delivery_id[:8]} due to {payload.type.replace('_', ' ')}", "HIGH")
+                    action_desc = f"LIVE REROUTE: Recalculated path from current pos to avoid {payload.affected_route}"
+                    add_notification("SYSTEM", f"🚨 Dynamic Reroute: Delivery #{delivery_id[:8]} bypassing {payload.type.replace('_', ' ')}", "HIGH")
                 
-                elif status == "waiting":
-                    action_desc = "Dispatch delayed — waiting for disruption to clear"
-                    update_data["recommended_action"] = f"HOLD: {payload.type} blocking route — delay dispatch"
-                else:
-                    action_desc = f"Risk escalated from {old_risk} to {new_risk}"
+                except Exception as reroute_err:
+                    print(f"Rerouting failed for {delivery_id}: {reroute_err}")
+                    # Fallback to backup if live rerouting fails
+                    backup = data.get("backup_route")
+                    if backup and backup.get("route_path"):
+                        update_data.update({
+                            "route": backup.get("route_path"),
+                            "rerouted": True,
+                            "reroute_reason": f"Fallback Reroute: {payload.type.replace('_', ' ').title()} (Live engine error)",
+                        })
+                        action_desc = "Rerouted to pre-calculated backup"
+                    else:
+                        action_desc = f"Risk escalated from {old_risk} to {new_risk} (No alternative found)"
 
                 db.collection("deliveries").document(delivery_id).update(update_data)
 
