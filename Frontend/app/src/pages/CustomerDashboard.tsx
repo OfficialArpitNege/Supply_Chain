@@ -253,19 +253,20 @@ const CustomerDashboard: React.FC = () => {
                         <Popup><div className="text-black font-black uppercase text-xs p-1">Destination</div></Popup>
                       </Marker>
                     )}
-                    {activeDelivery?.rerouted && activeDelivery.old_route && (
+                    {/* Traversed/Historical Journey (Warehouse to Driver) */}
+                    {activeDelivery?.rerouted && activeDelivery.old_route && activeDelivery.old_route.length > 1 && (
                       <Polyline 
                         positions={activeDelivery.old_route.map((p: any) => [p.lat, p.lon])} 
-                        color="#94A3B8" 
-                        weight={2} 
-                        opacity={0.15}
-                        dashArray="5, 10"
+                        color="#F59E0B" 
+                        weight={3} 
+                        opacity={0.3}
                       />
                     )}
+                    {/* Main/Active Route (Driver to Destination) */}
                     {activeDelivery?.route && (
                       <Polyline 
                         positions={activeDelivery.route.map((p: any) => [p.lat, p.lon])} 
-                        color="#3B82F6"
+                        color={activeDelivery.rerouted ? '#F59E0B' : '#3B82F6'}
                         weight={activeDelivery.rerouted ? 6 : 5} 
                         opacity={activeDelivery.rerouted ? 0.9 : 0.7} 
                       />

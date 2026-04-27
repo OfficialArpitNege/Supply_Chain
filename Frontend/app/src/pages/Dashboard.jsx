@@ -7,7 +7,7 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents, Circle, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -18,7 +18,10 @@ import {
   MdCancel,
   MdLayers,
   MdMap,
-  MdSecurity
+  MdSecurity,
+  MdAutoGraph,
+  MdAddCircle,
+  MdDelete
 } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 import toast from 'react-hot-toast';
@@ -97,8 +100,21 @@ const Dashboard = () => {
   const [approvingRequestIds, setApprovingRequestIds] = useState(new Set());
   const [lastDisruption, setLastDisruption] = useState(null);
   const [reroutingId, setReroutingId] = useState(null);
+  const [clusters, setClusters] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [testOrderCount, setTestOrderCount] = useState(5);
+  const [selectedProductSku, setSelectedProductSku] = useState('');
 
   const selectedDelivery = deliveries.find(d => d.id === selectedDeliveryId) || null;
+
+  const fetchClusters = async () => {
+    try {
+      const data = await callApi('/demand/clusters');
+      setClusters(data || []);
+    } catch (e) {
+      console.error("Cluster fetch failed", e);
+    }
+  };
 
   useEffect(() => {
     // 1. Pending Orders
@@ -126,7 +142,25 @@ const Dashboard = () => {
     onSnapshot(collection(db, 'warehouses'), (snap) => setWarehouses(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     onSnapshot(collection(db, 'drivers'), (snap) => setDrivers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
-    return () => { unsubOrders(); unsubSuppliers(); unsubDeliveries(); };
+    // 5. Demand Clusters
+    fetchClusters();
+    const clusterInterval = setInterval(fetchClusters, 10000);
+
+    // 6. Inventory for Demo
+    onSnapshot(collection(db, 'inventory'), (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setInventory(data);
+      if (data.length > 0 && !selectedProductSku) {
+        setSelectedProductSku(data[0].sku);
+      }
+    });
+
+    return () => { 
+      unsubOrders(); 
+      unsubSuppliers(); 
+      unsubDeliveries(); 
+      clearInterval(clusterInterval);
+    };
   }, []);
 
   const addWarehouse = async () => {
@@ -249,6 +283,38 @@ const Dashboard = () => {
         next.delete(requestId);
         return next;
       });
+    }
+  };
+
+  const generateTestOrders = async () => {
+    const product = inventory.find(i => i.sku === selectedProductSku);
+    if (!product) return toast.error("Select a valid product first");
+
+    const tid = toast.loading(`Generating ${testOrderCount} orders...`);
+    try {
+      await callApi('/demo/generate-test-orders', { 
+        method: 'POST',
+        body: JSON.stringify({
+          product_name: product.name,
+          sku: product.sku,
+          count: Number(testOrderCount)
+        })
+      });
+      toast.success(`${testOrderCount} Test orders generated`, { id: tid });
+      fetchClusters();
+    } catch (e) {
+      toast.error(e.message, { id: tid });
+    }
+  };
+
+  const clearTestOrders = async () => {
+    const tid = toast.loading('Clearing demo data...');
+    try {
+      await callApi('/demo/clear-test-orders', { method: 'POST' });
+      toast.success('System cleared', { id: tid });
+      fetchClusters();
+    } catch (e) {
+      toast.error(e.message, { id: tid });
     }
   };
 
@@ -467,6 +533,28 @@ const Dashboard = () => {
                       </React.Fragment>
                     );
                   })}
+
+                  {/* Demand Clusters Layer */}
+                  {clusters.map((c, idx) => (
+                    <Circle
+                      key={`cluster-${idx}`}
+                      center={[c.center.lat, c.center.lon]}
+                      radius={300 + (c.order_count * 50)}
+                      pathOptions={{
+                        color: '#EF4444',
+                        fillColor: '#EF4444',
+                        fillOpacity: 0.3,
+                        weight: 2,
+                        className: 'animate-demand-pulse'
+                      }}
+                    >
+                      <Tooltip permanent direction="center" className="bg-transparent border-none shadow-none">
+                         <div className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border border-red-400">
+                           {c.order_count} ORDERS
+                         </div>
+                      </Tooltip>
+                    </Circle>
+                  ))}
                 </MapContainer>
 
                 {selectedDelivery && (
@@ -569,12 +657,100 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="flex-1 bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl p-8 flex flex-col items-center justify-center text-center">
-             <MdSecurity size={48} className="text-slate-700 mb-4" />
-             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Security Protocol Active</h3>
-             <p className="text-[10px] text-slate-600 font-medium leading-relaxed">
-               All operational disruptions are now managed via the dedicated <span className="text-blue-500 font-bold">Disruption Hub</span>.
-             </p>
+          <div className="flex-1 bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl overflow-hidden flex flex-col">
+             <div className="bg-slate-800/50 p-4 border-b border-slate-700 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                   <MdAutoGraph className="text-blue-500" />
+                   <p className="text-[10px] font-black text-white uppercase tracking-widest">Intelligence Feed</p>
+                </div>
+                {clusters.length > 0 && (
+                   <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse">LIVE INSIGHT</span>
+                )}
+             </div>
+             
+             <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                {clusters.length === 0 ? (
+                  <div className="text-center py-10 opacity-40">
+                     <MdSecurity size={32} className="mx-auto mb-3" />
+                     <p className="text-[9px] font-black uppercase tracking-widest">No critical demand clusters detected</p>
+                  </div>
+                ) : (
+                  clusters.map((c, i) => (
+                    <div key={i} className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 animate-fadeIn">
+                       <p className="text-[9px] font-black text-red-400 uppercase tracking-[0.2em] mb-2">High Demand Detected</p>
+                       <h4 className="text-sm font-black text-white mb-3">📍 {c.area_name}</h4>
+                       
+                       <div className="bg-black/20 rounded-xl p-3 mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                             <span className="text-[8px] text-slate-500 font-black uppercase">Density</span>
+                             <span className="text-xs font-black text-white">{c.order_count} active orders</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                             <div className="bg-red-500 h-full w-3/4 animate-pulse"></div>
+                          </div>
+                       </div>
+
+                       <div className="flex items-start gap-3 bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
+                          <span className="text-xs">💡</span>
+                          <p className="text-[9px] text-blue-300 font-bold leading-relaxed">
+                             SUGGESTION: Pre-position idle drivers within 1.5km of this sector to minimize dispatch latency.
+                          </p>
+                       </div>
+                    </div>
+                  ))
+                )}
+
+                {/* Demo Controls */}
+                <div className="pt-6 border-t border-slate-700/50 space-y-4">
+                   <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest text-center">System Demonstration</p>
+                   
+                   <div className="space-y-3">
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1.5">Simulation Target</p>
+                        <select 
+                          value={selectedProductSku}
+                          onChange={(e) => setSelectedProductSku(e.target.value)}
+                          className="w-full bg-slate-900/80 border border-slate-700 p-2.5 rounded-xl text-[10px] text-white font-bold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                        >
+                          {inventory.length === 0 ? (
+                            <option value="">No stock detected</option>
+                          ) : (
+                            inventory.map(item => (
+                              <option key={item.sku} value={item.sku}>
+                                {item.name} ({item.sku})
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-1.5">Order Volume</p>
+                        <input 
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={testOrderCount}
+                          onChange={(e) => setTestOrderCount(e.target.value)}
+                          className="w-full bg-slate-900/80 border border-slate-700 p-2.5 rounded-xl text-[10px] text-white font-bold outline-none focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                   </div>
+
+                   <button 
+                    onClick={generateTestOrders}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20"
+                   >
+                     <MdAddCircle /> Generate Test Orders
+                   </button>
+                   <button 
+                    onClick={clearTestOrders}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-900/50 hover:bg-red-900/20 text-slate-500 hover:text-red-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-slate-800 hover:border-red-900/30"
+                   >
+                     <MdDelete /> Clear Demo Data
+                   </button>
+                </div>
+             </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import uuid
 import time
 import random
+from pydantic import BaseModel
 
 from Backend.utils.firebase_helper import get_firestore_client
 from Backend.routes.orders import place_order, accept_order, auto_assign_driver, dispatch_order, PlaceOrderRequest, CustomerLocation, OrderItem
@@ -19,9 +20,62 @@ LOCATIONS = [
     {"name": "Vashi Outlet", "lat": 19.0745, "lon": 72.9978}
 ]
 
+class GenerateTestOrdersRequest(BaseModel):
+    product_name: str
+    sku: str
+    count: int = 5
+
+@router.post("/generate-test-orders")
+def generate_test_orders(payload: GenerateTestOrdersRequest):
+    """
+    Generate test orders in a cluster for demo purposes with specified product and count.
+    """
+    try:
+        db = get_firestore_client()
+        base = {"lat": 19.0760, "lon": 72.8777}
+        
+        generated_ids = []
+        for i in range(payload.count):
+            # Slight random offset (~1-2km)
+            lat_off = random.uniform(-0.015, 0.015)
+            lon_off = random.uniform(-0.015, 0.015)
+            
+            order_data = {
+                "order_id": str(uuid.uuid4()),
+                "customer_name": f"Demo Customer {i+1}",
+                "customer_phone": "+91-0000000000",
+                "customer_location": {"lat": base["lat"] + lat_off, "lon": base["lon"] + lon_off},
+                "items": [{"name": payload.product_name, "sku": payload.sku, "quantity": 1}],
+                "status": "pending",
+                "priority": "normal",
+                "is_demo": True,
+                "created_at": datetime.now(timezone.utc)
+            }
+            db.collection("orders").add(order_data)
+            generated_ids.append(order_data["order_id"])
+            
+        return {"status": "success", "count": payload.count, "ids": generated_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/clear-test-orders")
+def clear_test_orders():
+    """
+    Remove all demo/test orders.
+    """
+    try:
+        db = get_firestore_client()
+        docs = db.collection("orders").where("is_demo", "==", True).stream()
+        count = 0
+        for doc in docs:
+            doc.reference.delete()
+            count += 1
+        return {"status": "success", "cleared": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 def _ensure_baseline_data(db):
     """Create sample warehouses and drivers if the database is empty."""
-    # 1. Warehouses
     wh_snap = db.collection("warehouses").limit(1).get()
     if not wh_snap:
         sample_warehouses = [
@@ -31,7 +85,6 @@ def _ensure_baseline_data(db):
         for wh in sample_warehouses:
             db.collection("warehouses").document().set(wh)
 
-    # 2. Drivers
     dr_snap = db.collection("drivers").limit(1).get()
     if not dr_snap:
         sample_drivers = [
@@ -42,33 +95,17 @@ def _ensure_baseline_data(db):
         for dr in sample_drivers:
             db.collection("drivers").document().set(dr)
 
-    # 3. Sample Inventory (Aligned with Marketplace)
-    inv_snap = db.collection("inventory").limit(1).get()
-    if not inv_snap:
-        sample_inventory = [
-            {"name": "Steel Rods (12mm)", "sku": "SKU-STL-12", "quantity": 500, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
-            {"name": "Premium Cement", "sku": "SKU-CEM-01", "quantity": 1000, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
-            {"name": "Industrial Bricks", "sku": "SKU-BRK-05", "quantity": 5000, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_01", "category": "Construction"},
-            {"name": "Copper Wiring", "sku": "SKU-COP-88", "quantity": 200, "reserved_quantity": 0, "warehouse_id": "wh_mumbai_02", "category": "Electrical"},
-        ]
-        for item in sample_inventory:
-            db.collection("inventory").add({
-                **item,
-                "created_at": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc),
-            })
-        print("Inventory seeded.")
+@router.post("/start")
+def start_demo(background_tasks: BackgroundTasks):
+    background_tasks.add_task(_run_full_demo)
+    return {"status": "success", "message": "Demo mode initiated."}
 
 def _run_full_demo():
-    """Automated background worker for the demo flow."""
     db = get_firestore_client()
     _ensure_baseline_data(db)
-    
-    # 2. Start 5 Parallel Workflows
     for i in range(5):
         try:
             loc = LOCATIONS[i]
-            # Stage 1: Place Order
             req = PlaceOrderRequest(
                 customer_name=loc["name"],
                 customer_phone=f"+91-900000000{i}",
@@ -79,52 +116,23 @@ def _run_full_demo():
             res_place = place_order(req)
             order_id = res_place["order_id"]
             time.sleep(1)
-            
-            # Stage 2: Accept (Auto Warehouse)
             accept_order(order_id)
             time.sleep(1)
-            
-            # Stage 3: Auto Assign Driver
             res_assign = auto_assign_driver(order_id)
             time.sleep(1)
-            
-            # Stage 4: Dispatch (ML Route Generation)
             if res_assign["status"] == "success":
                 res_dispatch = dispatch_order(order_id)
-                delivery_id = res_dispatch["delivery_id"]
-                
-                # Stage 5: Start Simulation (Live Tracking)
-                start_simulation(delivery_id, interval=2.0)
-                
-            print(f"Demo Order {i+1} live: {order_id}")
+                start_simulation(res_dispatch["delivery_id"], interval=2.0)
         except Exception as e:
             print(f"Demo Step Failed: {e}")
 
-@router.post("/start")
-def start_demo(background_tasks: BackgroundTasks):
-    """
-    ONE-CLICK HACKATHON MODE:
-    Automates 5 full order lifecycles from placement to live simulation.
-    """
-    background_tasks.add_task(_run_full_demo)
-    return {
-        "status": "success", 
-        "message": "Demo mode initiated. 5 orders are being processed and simulated."
-    }
-
 @router.get("/health")
 def get_system_health():
-    """
-    Control Tower Health Metric.
-    Computes global health based on risk and demand.
-    """
     try:
         db = get_firestore_client()
         active = list(db.collection("deliveries").where("status", "in", ["dispatched", "in_transit", "nearing"]).stream())
-        
         if not active:
             return {"status": "GREEN", "score": 100, "message": "System Idle - Optimal"}
-            
         high_risk_count = 0
         total_risk = 0
         for doc in active:
@@ -135,20 +143,13 @@ def get_system_health():
                 total_risk += 3
             elif risk == "MEDIUM":
                 total_risk += 1
-        
-        # Scoring logic
         avg_risk = total_risk / len(active)
-        load_factor = len(active) / 15.0 # Max demo fleet 15
-        
+        load_factor = len(active) / 15.0
         health_score = 100 - (avg_risk * 20) - (load_factor * 10)
         health_score = max(0, min(100, health_score))
-        
         status = "GREEN"
-        if health_score < 40 or high_risk_count >= 3:
-            status = "RED"
-        elif health_score < 75:
-            status = "YELLOW"
-            
+        if health_score < 40 or high_risk_count >= 3: status = "RED"
+        elif health_score < 75: status = "YELLOW"
         return {
             "status": status,
             "score": round(health_score, 1),
