@@ -21,6 +21,12 @@ const warehouseIcon = new L.Icon({
   iconAnchor: [18, 36],
 });
 
+const destinationIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
+  iconSize: [34, 34],
+  iconAnchor: [17, 34],
+});
+
 const DriverDashboard: React.FC = () => {
   const { currentUser, callApi } = useApp();
   const [driver, setDriver] = useState<any>(null);
@@ -140,7 +146,7 @@ const DriverDashboard: React.FC = () => {
   const moveForward = async () => {
     if (!driver?.active_delivery_id) return;
     try {
-      await callApi(`/deliveries/${driver.active_delivery_id}/move?step_size=5`, {
+      await callApi(`/deliveries/${driver.active_delivery_id}/move?step_percent=25`, {
         method: 'POST'
       });
     } catch (e: any) {
@@ -215,7 +221,7 @@ const DriverDashboard: React.FC = () => {
                   <button 
                     onClick={startDelivery}
                     disabled={activeDelivery.status !== 'dispatched'}
-                    className={`flex-1 flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest transition-all ${activeDelivery.status === 'dispatched' ? 'bg-white text-blue-600 shadow-2xl hover:scale-[1.02]' : 'bg-white/20 text-white/40 cursor-not-allowed'}`}
+                    className={`flex-1 flex items-center justify-center gap-3 py-6 rounded-4xl font-black text-xs uppercase tracking-widest transition-all ${activeDelivery.status === 'dispatched' ? 'bg-white text-blue-600 shadow-2xl hover:scale-[1.02]' : 'bg-white/20 text-white/40 cursor-not-allowed'}`}
                   >
                     <MdPlayArrow size={24} /> Start
                   </button>
@@ -223,7 +229,7 @@ const DriverDashboard: React.FC = () => {
                   {activeDelivery.status !== 'dispatched' && currentPoint && (
                     <button 
                       onClick={() => window.open(`https://www.google.com/maps/dir/${currentPoint.lat},${currentPoint.lon}/${activeDelivery.end_location?.lat},${activeDelivery.end_location?.lon}`, '_blank')}
-                      className="flex-1 flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest bg-emerald-500 text-white shadow-2xl hover:scale-[1.02] transition-all border border-emerald-400/30"
+                      className="flex-1 flex items-center justify-center gap-3 py-6 rounded-4xl font-black text-xs uppercase tracking-widest bg-emerald-500 text-white shadow-2xl hover:scale-[1.02] transition-all border border-emerald-400/30"
                     >
                       <MdMap size={24} /> Navigate
                     </button>
@@ -255,7 +261,7 @@ const DriverDashboard: React.FC = () => {
 
                <button 
                  onClick={moveForward}
-                 disabled={activeDelivery.status === 'delivered' || activeDelivery.status === 'dispatched'}
+                 disabled={activeDelivery.status === 'delivered'}
                  className="w-full group bg-slate-900 hover:bg-blue-600 text-white py-10 rounded-[2.5rem] border border-slate-700 hover:border-blue-400 transition-all flex flex-col items-center gap-3 active:scale-95 disabled:opacity-30 disabled:hover:bg-slate-900"
                >
                   <MdFastForward size={32} className="group-hover:translate-x-2 transition-transform" />
@@ -265,8 +271,8 @@ const DriverDashboard: React.FC = () => {
           </div>
 
           {/* Tactical Map Card */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-[3rem] overflow-hidden shadow-2xl h-[600px] relative">
-            <div className="absolute top-6 left-6 z-[1000] bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest text-blue-400">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-[3rem] overflow-hidden shadow-2xl h-150 relative">
+            <div className="absolute top-6 left-6 z-1000 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest text-blue-400">
               Live Tactical Map
             </div>
             {currentPoint ? (
@@ -299,9 +305,19 @@ const DriverDashboard: React.FC = () => {
                   <Popup><div className="text-black font-black uppercase text-xs p-1">Current Location</div></Popup>
                 </Marker>
 
+                {/* Start Marker */}
+                {activeDelivery.start_location && (
+                  <Marker
+                    position={[activeDelivery.start_location.lat, activeDelivery.start_location.lon]}
+                    icon={warehouseIcon}
+                  >
+                    <Popup><div className="text-black font-black uppercase text-xs p-1">Start</div></Popup>
+                  </Marker>
+                )}
+
                 {/* Destination Marker */}
                 {activeDelivery.end_location && (
-                  <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]}>
+                  <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} icon={destinationIcon}>
                     <Popup><div className="text-black font-black uppercase text-xs p-1">Destination</div></Popup>
                   </Marker>
                 )}

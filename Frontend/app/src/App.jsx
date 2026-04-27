@@ -16,10 +16,12 @@ import AIInsights from './pages/AIInsights';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Automation from './pages/Automation';
+import OrdersLifecycle from './pages/OrdersLifecycle';
 import SupplierDashboard from './pages/SupplierDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerDashboard from './pages/CustomerDashboard';
+import CustomerOrdersLifecycle from './pages/CustomerOrdersLifecycle';
 
 // Placeholders for remaining modules
 import { 
@@ -81,6 +83,12 @@ function App() {
                   <Inventory />
                 </ProtectedRoute>
               } />
+
+              <Route path="orders-lifecycle" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <OrdersLifecycle />
+                </ProtectedRoute>
+              } />
               
               <Route path="suppliers" element={
                 <ProtectedRoute allowedRoles={['admin']}>
@@ -120,6 +128,11 @@ function App() {
               <Route path="customer-dashboard" element={
                 <ProtectedRoute allowedRoles={['customer']}>
                   <CustomerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="customer-orders-lifecycle" element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <CustomerOrdersLifecycle />
                 </ProtectedRoute>
               } />
               <Route path="marketplace" element={

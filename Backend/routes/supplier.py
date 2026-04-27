@@ -46,8 +46,14 @@ def approve_request(request_id: str = Path(...)):
             raise HTTPException(status_code=404, detail="Request not found")
             
         data = req_doc.to_dict()
-        if data["status"] != "pending":
-            raise HTTPException(status_code=400, detail="Request already processed")
+        current_status = str(data.get("status", "")).lower()
+
+        if current_status == "approved":
+            # Idempotent behavior: second click should not fail.
+            return {"status": "success", "message": "Request already approved"}
+
+        if current_status != "pending":
+            raise HTTPException(status_code=409, detail=f"Request is '{data.get('status')}', expected 'pending'")
 
         # 1. Update Inventory
         # Find existing SKU in that warehouse or create new
@@ -58,12 +64,18 @@ def approve_request(request_id: str = Path(...)):
             
         if inv_query:
             inv_ref = db.collection("inventory").document(inv_query[0].id)
-            inv_ref.update({"quantity": inv_query[0].to_dict()["quantity"] + data["quantity"]})
+            inv_ref.update({
+                "quantity": inv_query[0].to_dict()["quantity"] + data["quantity"],
+                "name": data.get("product_name"),
+                "price_per_unit": data.get("price_per_unit"),
+                "updated_at": datetime.now(timezone.utc)
+            })
         else:
             db.collection("inventory").add({
                 "sku": data["sku"],
                 "name": data["product_name"],
                 "quantity": data["quantity"],
+                "price_per_unit": data.get("price_per_unit"),
                 "warehouse_id": data["warehouse_id"],
                 "reserved_quantity": 0,
                 "created_at": datetime.now(timezone.utc)
@@ -72,5 +84,7 @@ def approve_request(request_id: str = Path(...)):
         # 2. Mark Approved
         req_ref.update({"status": "approved", "processed_at": datetime.now(timezone.utc)})
         return {"status": "success", "message": "Inventory updated"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

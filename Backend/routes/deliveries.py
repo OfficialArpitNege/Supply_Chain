@@ -219,7 +219,11 @@ def create_delivery(payload: CreateDeliveryRequest):
 
 
 @router.post("/{delivery_id}/move", dependencies=[Depends(role_required(["admin", "driver"]))])
-def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
+def move_delivery(
+    delivery_id: str = Path(...),
+    step_size: int = Query(1),
+    step_percent: Optional[int] = Query(None)
+):
     """
     Simulate movement: Advance the driver to the next waypoint(s).
     Updates progress, location, and ETA in real-time.
@@ -233,7 +237,7 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
             raise HTTPException(status_code=404, detail="Delivery not found")
             
         data = doc.to_dict()
-        if data.get("status") not in ["dispatched", "in_transit"]:
+        if data.get("status") not in ["dispatched", "in_transit", "nearing", "active"]:
             return {"status": "ignored", "message": f"Delivery is '{data.get('status')}', not moving."}
 
         route = data.get("route", [])
@@ -241,21 +245,73 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
             raise HTTPException(status_code=400, detail="No route coordinates found for this delivery")
 
         current_idx = data.get("current_index", 0)
-        # Advance point-by-point for smooth road-following movement
-        move_amount = step_size
-        new_idx = min(current_idx + move_amount, len(route) - 1)
+        route_last_idx = len(route) - 1
+
+        # Single-point routes are effectively at destination.
+        if route_last_idx <= 0:
+            del_ref.update({"status": "delivered", "progress": 100, "updated_at": datetime.now(timezone.utc)})
+            
+            # Sync Order status
+            order_id = data.get("order_id")
+            if order_id:
+                db.collection("orders").document(order_id).update({
+                    "status": "delivered",
+                    "delivered_at": datetime.now(timezone.utc)
+                })
+            
+            # Release driver fully
+            driver_id = data.get("driver_id")
+            if driver_id:
+                db.collection("drivers").document(driver_id).update({
+                    "status": "available",
+                    "active_delivery_id": None,
+                    "active_order_id": None
+                })
+                
+            return {"status": "at_destination", "message": "Driver has reached the destination."}
+
+        target_progress = None
+        if step_percent and step_percent > 0:
+            # Move in deterministic percentage buckets (e.g., 25 -> 25%, 50%, 75%, 100%).
+            pct_step = max(1, min(step_percent, 100))
+            current_progress = float(data.get("progress", 0) or 0)
+            current_bucket = int(current_progress // pct_step)
+            target_progress = min((current_bucket + 1) * pct_step, 100)
+            new_idx = min(round((target_progress / 100) * route_last_idx), route_last_idx)
+        else:
+            # Advance point-by-point for smooth road-following movement.
+            move_amount = max(step_size, 0)
+            new_idx = min(current_idx + move_amount, route_last_idx)
         
         if new_idx == current_idx and new_idx == len(route) - 1:
             del_ref.update({"status": "delivered", "progress": 100, "updated_at": datetime.now(timezone.utc)})
+            
+            # Sync Order status
+            order_id = data.get("order_id")
+            if order_id:
+                db.collection("orders").document(order_id).update({
+                    "status": "delivered",
+                    "delivered_at": datetime.now(timezone.utc)
+                })
+                
+            # Release driver fully
+            driver_id = data.get("driver_id")
+            if driver_id:
+                db.collection("drivers").document(driver_id).update({
+                    "status": "available",
+                    "active_delivery_id": None,
+                    "active_order_id": None
+                })
+                
             return {"status": "at_destination", "message": "Driver has reached the destination."}
 
         # Calculate new metrics
         new_loc = route[new_idx]
-        progress = round((new_idx / (len(route) - 1)) * 100, 1)
+        progress = target_progress if target_progress is not None else round((new_idx / route_last_idx) * 100, 1)
         
         # UI-Friendly Status (Nearing)
         orig_eta = data.get("total_eta", 30)
-        remaining_ratio = 1.0 - (new_idx / (len(route) - 1))
+        remaining_ratio = 1.0 - (new_idx / route_last_idx)
         new_eta = round(orig_eta * remaining_ratio, 1)
         
         status = "in_transit"
@@ -289,10 +345,23 @@ def move_delivery(delivery_id: str = Path(...), step_size: int = Query(1)):
         # Sync to Driver
         driver_id = data.get("driver_id")
         if driver_id:
-            db.collection("drivers").document(driver_id).update({
+            driver_update = {
                 "current_location": {"lat": new_loc["lat"], "lon": new_loc["lon"]},
-                "status": "in_transit"
-            })
+                "status": "in_transit" if status != "delivered" else "available"
+            }
+            if status == "delivered":
+                driver_update["active_delivery_id"] = None
+                driver_update["active_order_id"] = None
+            db.collection("drivers").document(driver_id).update(driver_update)
+
+        # Sync to Order if status changed to delivered
+        if status == "delivered" and data.get("status") != "delivered":
+            order_id = data.get("order_id")
+            if order_id:
+                db.collection("orders").document(order_id).update({
+                    "status": "delivered",
+                    "delivered_at": datetime.now(timezone.utc)
+                })
 
         return {
             "status": "moving",
@@ -377,6 +446,7 @@ def start_simulation(delivery_id: str = Path(...), interval: float = 3.0):
 
 
 @router.post("/{delivery_id}/complete", dependencies=[Depends(role_required(["admin", "driver"]))])
+
 def complete_delivery(delivery_id: str = Path(...)):
     try:
         db = get_firestore_client()
@@ -408,6 +478,27 @@ def complete_delivery(delivery_id: str = Path(...)):
             update["performance_score"] = perf_score
 
         doc_ref.update(update)
+
+        # Set driver status to available if assigned
+        driver_id = data.get("driver_id")
+        if driver_id:
+            driver_ref = db.collection("drivers").document(driver_id)
+            driver_doc = driver_ref.get()
+            if driver_doc.exists:
+                driver_ref.update({
+                    "status": "available",
+                    "active_delivery_id": None,
+                    "active_order_id": None
+                })
+                
+        # Set order status to delivered
+        order_id = data.get("order_id")
+        if order_id:
+            db.collection("orders").document(order_id).update({
+                "status": "delivered",
+                "delivered_at": datetime.now(timezone.utc)
+            })
+
         return {"status": "success", "message": f"Delivery {delivery_id} completed", "performance_score": perf_score}
     except HTTPException:
         raise

@@ -682,8 +682,8 @@ def dispatch_order(order_id: str = Path(...)):
             else:
                 route["rejected_reason"] = "Lower overall composite score"
 
-        # ── Build route waypoints ──
-        route_waypoints = []
+        # ── Build full route geometry for accurate map rendering ──
+        route_points = []
         def safe_float(val):
             try:
                 if val is None:
@@ -696,30 +696,39 @@ def dispatch_order(order_id: str = Path(...)):
                 return 0.0
         def safe_str(val):
             return str(val) if val is not None else ""
-        if best_route.route_path and len(best_route.route_path) > 0:
-            route_waypoints.append({
-                "lat": safe_float(wh_loc.get("lat")),
-                "lon": safe_float(wh_loc.get("lon")),
-                "label": safe_str(wh_data.get("name", "Warehouse"))
+        path = best_route.route_path or []
+
+        for idx, point in enumerate(path):
+            if not point or len(point) < 2:
+                continue
+            route_points.append({
+                "lat": safe_float(point[0]),
+                "lon": safe_float(point[1]),
+                "label": f"Point {idx + 1}"
             })
 
-        path = best_route.route_path
+        if route_points:
+            route_points[0]["lat"] = safe_float(wh_loc.get("lat"))
+            route_points[0]["lon"] = safe_float(wh_loc.get("lon"))
+            route_points[0]["label"] = safe_str(wh_data.get("name", "Warehouse"))
 
-        if len(path) > 2:
-            step = max(1, len(path) // 4)
-
-            for i in range(step, len(path) - 1, step):
-                if i < len(path):
-                    route_waypoints.append({
-                        "lat": safe_float(path[i][0]),
-                        "lon": safe_float(path[i][1]),
-                        "label": f"Waypoint {len(route_waypoints)}"
-                    })
-        route_waypoints.append({
-        "lat": safe_float(cust_loc.get("lat")),
-        "lon": safe_float(cust_loc.get("lon")),
-        "label": safe_str(order_data.get("customer_name", "Customer"))
-    })
+            route_points[-1]["lat"] = safe_float(cust_loc.get("lat"))
+            route_points[-1]["lon"] = safe_float(cust_loc.get("lon"))
+            route_points[-1]["label"] = safe_str(order_data.get("customer_name", "Customer"))
+        else:
+            # Final fallback if route_path is empty/unavailable.
+            route_points = [
+                {
+                    "lat": safe_float(wh_loc.get("lat")),
+                    "lon": safe_float(wh_loc.get("lon")),
+                    "label": safe_str(wh_data.get("name", "Warehouse"))
+                },
+                {
+                    "lat": safe_float(cust_loc.get("lat")),
+                    "lon": safe_float(cust_loc.get("lon")),
+                    "label": safe_str(order_data.get("customer_name", "Customer"))
+                }
+            ]
 
         now = datetime.now(timezone.utc)
         delivery_id = f"DEL-{uuid.uuid4().hex[:8].upper()}"
@@ -787,7 +796,7 @@ def dispatch_order(order_id: str = Path(...)):
             "confidence_score": confidence_pct,
             "confidence_label": confidence_label,
             "selection_mode": selection_mode,
-            "route": route_waypoints,
+            "route": route_points,
             "current_index": 0,
             "progress": 0,
             "eta_remaining": total_eta,
@@ -858,7 +867,7 @@ def dispatch_order(order_id: str = Path(...)):
                 "id": best_route.id,
                 "distance_km": total_distance,
                 "eta_minutes": total_eta,
-                "waypoints": len(route_waypoints),
+                "waypoints": len(route_points),
             },
             "driver_id": driver_id,
             "message": f"Order dispatched. Delivery {delivery_id} created with route {best_route.id} ({total_distance} km, ~{total_eta} min)."

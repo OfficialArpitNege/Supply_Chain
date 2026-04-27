@@ -35,6 +35,12 @@ const destIcon = new L.Icon({
   iconAnchor: [16, 32],
 });
 
+const startIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2271/2271068.png',
+  iconSize: [34, 34],
+  iconAnchor: [17, 34],
+});
+
 // --- Helpers ---
 const MapRefocuser = ({ center }: { center: [number, number] }) => {
   const map = useMap();
@@ -63,7 +69,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 // --- Main Component ---
 const CustomerDashboard: React.FC = () => {
-  const { callApi } = useApp();
+  const { callApi, currentUser } = useApp();
   const navigate = useNavigate();
   const { orderId: urlOrderId } = useParams<{ orderId: string }>();
   const [view, setView] = useState<'track' | 'marketplace'>('track');
@@ -81,8 +87,14 @@ const CustomerDashboard: React.FC = () => {
 
   // Handle URL Param
   useEffect(() => {
-    if (urlOrderId) setSelectedOrderId(urlOrderId);
-  }, [urlOrderId]);
+    if (urlOrderId) {
+      setSelectedOrderId(urlOrderId);
+      return;
+    }
+
+    setSelectedOrderId(null);
+    setOrderFilter('active');
+  }, [urlOrderId, currentUser?.uid]);
 
   // Real-time Listeners
   useEffect(() => {
@@ -113,17 +125,26 @@ const CustomerDashboard: React.FC = () => {
     return () => unsub();
   }, [selectedOrderId]);
 
-  const activeOrders = orders.filter(o => o.status !== 'delivered');
-  const historyOrders = orders.filter(o => o.status === 'delivered');
+  const customerOrders = currentUser?.uid
+    ? orders.filter(o => o.customer_id === currentUser.uid)
+    : orders;
+  const activeOrders = customerOrders.filter(o => o.status !== 'delivered');
+  const historyOrders = customerOrders.filter(o => o.status === 'delivered');
   const displayOrders = orderFilter === 'active' ? activeOrders : historyOrders;
-  const selectedOrder = orders.find(o => o.id === selectedOrderId);
+  const selectedOrder = customerOrders.find(o => o.id === selectedOrderId) || null;
+
+  useEffect(() => {
+    if (selectedOrderId && !customerOrders.some(o => o.id === selectedOrderId)) {
+      setSelectedOrderId(null);
+    }
+  }, [customerOrders, selectedOrderId]);
 
   // Stats for the selected order
   const currentLoc = activeDelivery?.route?.[activeDelivery.current_index || 0];
   const isArrivingSoon = activeDelivery?.eta_remaining <= 10 && activeDelivery?.status !== 'delivered';
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col bg-[#0F172A] text-slate-200 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl">
+    <div className="h-[calc(100vh-100px)] flex flex-col bg-background text-slate-200 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl">
       <Toaster position="top-right" />
       
       {/* Header */}
@@ -146,6 +167,12 @@ const CustomerDashboard: React.FC = () => {
                <p className="text-[8px] font-medium text-slate-500">{customerInfo.phone}</p>
              </div>
           </div>
+          <button
+            onClick={() => navigate('/customer-orders-lifecycle')}
+            className="px-4 py-2 border border-slate-700 bg-slate-800/70 hover:bg-slate-700 text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+          >
+            Order Lifecycle
+          </button>
           <button 
             onClick={() => setView(view === 'track' ? 'marketplace' : 'track')}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20"
@@ -236,6 +263,9 @@ const CustomerDashboard: React.FC = () => {
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                     {currentLoc && <MapRefocuser center={[currentLoc.lat, currentLoc.lon]} />}
                     {currentLoc && <Marker position={[currentLoc.lat, currentLoc.lon]} icon={driverIcon} />}
+                    {activeDelivery?.start_location && (
+                      <Marker position={[activeDelivery.start_location.lat, activeDelivery.start_location.lon]} icon={startIcon} />
+                    )}
                     {activeDelivery?.end_location && (
                       <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} icon={destIcon} />
                     )}
@@ -260,14 +290,14 @@ const CustomerDashboard: React.FC = () => {
 
                   {/* Arriving Soon Overlay */}
                   {isArrivingSoon && (
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-8 py-3 rounded-2xl shadow-2xl z-[1000] flex items-center gap-3 animate-bounce">
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-8 py-3 rounded-2xl shadow-2xl z-1000 flex items-center gap-3 animate-bounce">
                       <MdAccessTime size={20} />
                       <p className="text-xs font-black uppercase tracking-widest">Driver is arriving in {Math.round(activeDelivery.eta_remaining)} mins!</p>
                     </div>
                   )}
 
                   {/* Bottom Stats Overlay */}
-                  <div className="absolute bottom-6 left-6 right-6 z-[1000] grid grid-cols-3 gap-4">
+                  <div className="absolute bottom-6 left-6 right-6 z-1000 grid grid-cols-3 gap-4">
                     <div className="bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-2xl">
                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Transit Progress</p>
                       <div className="flex items-center gap-3">

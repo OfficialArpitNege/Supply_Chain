@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { useApp } from '../context/AppContext';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -25,6 +25,7 @@ const CustomerMarketplace: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [myShipments, setMyShipments] = useState<any[]>([]);
+  const [customerName, setCustomerName] = useState('Guest User');
   const { callApi, currentUser } = useApp();
   const navigate = useNavigate();
 
@@ -40,12 +41,46 @@ const CustomerMarketplace: React.FC = () => {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'deliveries'), (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
       data.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
       setMyShipments(data);
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveCustomerName = async () => {
+      if (!currentUser?.email) {
+        setCustomerName('Guest User');
+        return;
+      }
+
+      if (currentUser.displayName) {
+        setCustomerName(currentUser.displayName);
+        return;
+      }
+
+      try {
+        const userSnap = await getDocs(query(collection(db, 'users'), where('email', '==', currentUser.email)));
+        if (!cancelled && !userSnap.empty) {
+          const userData = userSnap.docs[0].data();
+          setCustomerName(userData.name || currentUser.email.split('@')[0] || 'Guest User');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to resolve customer name', error);
+      }
+
+      setCustomerName(currentUser.email.split('@')[0] || 'Guest User');
+    };
+
+    resolveCustomerName();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   const placeOrder = async () => {
     if (!cart || !phone || !address) return;
@@ -53,7 +88,7 @@ const CustomerMarketplace: React.FC = () => {
       const data = await callApi('/orders/place', {
         method: 'POST',
         body: JSON.stringify({
-          customer_name: currentUser?.displayName || 'Guest User',
+          customer_name: customerName,
           customer_id: currentUser?.uid,
           customer_phone: phone,
           customer_address: address,
@@ -102,9 +137,13 @@ const CustomerMarketplace: React.FC = () => {
                     <p className={`text-xs font-bold uppercase ${cart?.id === p.id ? 'text-blue-200' : 'text-gray-500'}`}>{p.sku}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-black text-emerald-400">In Stock</p>
+                    <p className="text-lg font-black text-emerald-400">{p.price_per_unit || p.unit_price || p.price ? `₹${p.price_per_unit || p.unit_price || p.price}` : 'Price N/A'}</p>
                     <p className="text-xs text-gray-400 uppercase">{p.quantity} units</p>
                   </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span>Price per unit</span>
+                  <span>{p.price_per_unit || p.unit_price || p.price ? `₹${p.price_per_unit || p.unit_price || p.price}` : 'Not listed'}</span>
                 </div>
               </div>
             ))}
@@ -121,6 +160,7 @@ const CustomerMarketplace: React.FC = () => {
                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Selected Item</p>
                        <p className="text-xl font-black text-white">{cart.name}</p>
                        <p className="text-xs text-blue-500 font-bold">{cart.sku}</p>
+                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-2">{cart.price_per_unit || cart.unit_price || cart.price ? `Price / Unit: ₹${cart.price_per_unit || cart.unit_price || cart.price}` : 'Price not listed'}</p>
                     </div>
                     
                     <div className="space-y-4">
@@ -179,7 +219,10 @@ const CustomerMarketplace: React.FC = () => {
                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Pin Location on Map</label>
                        <p className="text-[10px] font-mono text-blue-400">{location.lat.toFixed(4)}, {location.lon.toFixed(4)}</p>
                     </div>
-                    <div className="flex-1 bg-[#0a0a0f] rounded-[2rem] border border-gray-800 overflow-hidden min-h-[300px]">
+                    <div
+                      className="flex-1 bg-[#0a0a0f] border border-gray-800 overflow-hidden"
+                      style={{ borderRadius: '2rem', minHeight: 300 }}
+                    >
                       <MapContainer center={[19.1136, 72.8697]} zoom={12} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                         <Marker position={[location.lat, location.lon]} />
@@ -202,59 +245,6 @@ const CustomerMarketplace: React.FC = () => {
         {/* --- My Shipments Section --- */}
         <section className="mt-20">
           <div className="flex justify-between items-end mb-8 px-4">
-             <div>
-               <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-2">Logistics Hub</h3>
-               <h2 className="text-3xl font-black text-white tracking-tighter uppercase">My Shipments</h2>
-             </div>
-             <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest">
-               Live Tracking Enabled 📡
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myShipments.length === 0 ? (
-              <div className="col-span-full bg-[#16161e] p-12 rounded-[2.5rem] border border-gray-800 text-center">
-                <p className="text-gray-500 italic">No active or historical shipments found.</p>
-              </div>
-            ) : (
-              myShipments.map(s => (
-                <div key={s.id} className="bg-[#16161e] border border-gray-800 p-8 rounded-[2.5rem] hover:border-blue-500/50 transition-all group">
-                   <div className="flex justify-between items-start mb-6">
-                      <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Shipment ID</p>
-                        <p className="text-[10px] font-mono font-bold text-white tracking-tight">#{s.delivery_id?.slice(-8)}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${s.status === 'delivered' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20 animate-pulse-subtle'}`}>
-                        {s.status}
-                      </span>
-                   </div>
-
-                   <h4 className="text-xl font-black text-white mb-2 truncate">Global Transit Nexus</h4>
-                   <p className="text-[10px] text-gray-500 mb-6 flex items-center gap-2 font-medium">
-                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                     {s.customer_address?.slice(0, 40)}...
-                   </p>
-
-                   <div className="grid grid-cols-2 gap-3 mb-8">
-                      <div className="bg-[#0a0a0f] p-3 rounded-xl border border-gray-800/50 text-center">
-                         <p className="text-[7px] text-gray-500 uppercase font-black">Progress</p>
-                         <p className="text-sm font-black text-white">{s.progress || 0}%</p>
-                      </div>
-                      <div className="bg-[#0a0a0f] p-3 rounded-xl border border-gray-800/50 text-center">
-                         <p className="text-[7px] text-gray-500 uppercase font-black">Arrival</p>
-                         <p className="text-sm font-black text-orange-400">{s.status === 'delivered' ? 'REACHED' : `~${Math.round(s.eta_remaining || 0)}m`}</p>
-                      </div>
-                   </div>
-
-                   <button 
-                      onClick={() => navigate(`/track/${s.order_id}`)}
-                      className="w-full py-4 bg-gray-800 group-hover:bg-blue-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-lg shadow-black/20"
-                   >
-                     Track Live Tactical View
-                   </button>
-                </div>
-              ))
-            )}
           </div>
         </section>
       </div>

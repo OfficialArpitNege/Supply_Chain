@@ -12,13 +12,15 @@ import {
   MdLogout,
   MdMenu,
   MdChevronLeft,
-  MdSecurity
+  MdSecurity,
+  MdTimeline
 } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 
 const navItems = [
   // Admin Only
   { path: '/admin-dashboard', label: 'Dashboard', icon: MdDashboard, roles: ['admin'] },
+  { path: '/orders-lifecycle', label: 'Orders Lifecycle', icon: MdTimeline, roles: ['admin'] },
   { path: '/logistics', label: 'Logistics', icon: MdLocalShipping, roles: ['admin'] },
   { path: '/inventory', label: 'Inventory', icon: MdInventory, roles: ['admin'] },
   { path: '/suppliers', label: 'Suppliers', icon: MdPeople, roles: ['admin'] },
@@ -30,6 +32,7 @@ const navItems = [
   { path: '/supplier-dashboard', label: 'Supplier Portal', icon: MdInventory, roles: ['supplier'] },
   { path: '/driver-dashboard', label: 'Driver App', icon: MdLocalShipping, roles: ['driver'] },
   { path: '/customer-dashboard', label: 'Tracking Hub', icon: MdPsychology, roles: ['customer'] },
+  { path: '/customer-orders-lifecycle', label: 'Order Lifecycle', icon: MdTimeline, roles: ['customer'] },
 ];
 
 const AppShell = () => {
@@ -51,7 +54,7 @@ const AppShell = () => {
   }, [userRole]);
 
   return (
-    <div className="flex h-screen bg-[#0F172A] text-[#F1F5F9] overflow-hidden">
+    <div className="flex h-screen bg-background text-text-primary overflow-hidden">
       {/* Sidebar */}
       <aside 
         className={`${
@@ -102,8 +105,8 @@ const AppShell = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Background Glow */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 blur-[150px] -z-10 rounded-full"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-600/5 blur-[100px] -z-10 rounded-full"></div>
+        <div className="absolute top-0 right-0 w-125 h-125 bg-blue-600/5 blur-[150px] -z-10 rounded-full"></div>
+        <div className="absolute bottom-0 left-0 w-75 h-75 bg-indigo-600/5 blur-[100px] -z-10 rounded-full"></div>
 
         {/* Top Bar */}
         <header className="h-16 bg-[#1E293B]/80 backdrop-blur-md border-b border-slate-700 flex items-center justify-between px-8 z-10">
