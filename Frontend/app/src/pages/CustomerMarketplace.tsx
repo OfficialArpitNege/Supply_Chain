@@ -6,6 +6,15 @@ import { useApp } from '../context/AppContext';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import destPin from '../assets/destination_pin_v2.png';
+
+const destIcon = new L.Icon({
+  iconUrl: destPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
+});
 
 const LocationPicker = ({ onLocationSelect }: { onLocationSelect: (lat: number, lon: number) => void }) => {
   useMapEvents({
@@ -225,7 +234,11 @@ const CustomerMarketplace: React.FC = () => {
                     >
                       <MapContainer center={[19.1136, 72.8697]} zoom={12} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                        <Marker position={[location.lat, location.lon]} />
+                        <Marker 
+                          position={[location.lat, location.lon]} 
+                          icon={destIcon}
+                          zIndexOffset={1000}
+                        />
                         <LocationPicker onLocationSelect={(lat, lon) => setLocation({ lat, lon })} />
                       </MapContainer>
                     </div>

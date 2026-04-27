@@ -7,6 +7,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useApp } from '../context/AppContext';
 import toast from 'react-hot-toast';
+import customerPin from '../assets/destination_pin_v2.png';
 import { 
   MdLocalShipping, 
   MdCheckCircle, 
@@ -24,9 +25,11 @@ const warehouseIcon = new L.Icon({
 });
 
 const customerIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
+  iconUrl: customerPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
 });
 
 const driverIcon = new L.Icon({
@@ -281,7 +284,11 @@ const Logistics = () => {
               )}
 
               {order?.customer_location && (
-                <Marker position={[order.customer_location.lat, order.customer_location.lon]} icon={customerIcon}>
+                <Marker 
+                  position={[order.customer_location.lat, order.customer_location.lon]} 
+                  icon={customerIcon}
+                  zIndexOffset={1000}
+                >
                    <Popup><div className="text-xs font-black uppercase text-slate-900">Destination: {order.customer_name}</div></Popup>
                 </Marker>
               )}
@@ -296,15 +303,56 @@ const Logistics = () => {
                   </Marker>
               )}
 
+              {/* Old Route (grey, faded, dashed) if rerouted */}
+              {delivery?.rerouted && delivery.old_route && delivery.old_route.length > 1 && (
+                <Polyline 
+                   positions={delivery.old_route.map(p => [p.lat, p.lon])} 
+                   color="#94A3B8" 
+                   weight={2} 
+                   opacity={0.2}
+                   dashArray="5, 10"
+                />
+              )}
+
+              {/* Active Route (blue, bold) */}
               {routeData?.route && (
                 <Polyline 
                    positions={routeData.route.map(p => [p.lat, p.lon])} 
-                   color="#3B82F6" 
-                   weight={6} 
-                   opacity={0.4}
+                   color={delivery?.rerouted ? "#F59E0B" : "#3B82F6"} 
+                   weight={delivery?.rerouted ? 6 : 5} 
+                   opacity={delivery?.rerouted ? 0.9 : 0.4}
                 />
               )}
            </MapContainer>
+
+           {/* Route Status Label */}
+           <div className={`absolute bottom-8 left-8 right-8 z-[1000] p-3 rounded-xl backdrop-blur-md border shadow-lg flex items-center gap-2 ${
+             delivery?.rerouted
+               ? 'bg-orange-500/10 border-orange-500/20'
+               : 'bg-slate-900/80 border-slate-700'
+           }`}>
+             <span className="text-sm">{delivery?.rerouted ? '🔀' : '✅'}</span>
+             <p className={`text-[9px] font-black uppercase tracking-wider ${
+               delivery?.rerouted ? 'text-orange-400' : 'text-blue-400'
+             }`}>
+               {delivery?.rerouted
+                 ? `Rerouted: ${(delivery.reroute_reason || 'traffic congestion').replace('Dynamic Reroute: ', '').replace('Decision Reroute: ', '')}`
+                 : 'Optimal route retained'
+               }
+             </p>
+             {delivery?.rerouted && (
+               <div className="ml-auto flex items-center gap-3">
+                 <div className="flex items-center gap-1">
+                   <div className="w-4 h-[2px] bg-slate-500 opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #94A3B8 0, #94A3B8 2px, transparent 2px, transparent 5px)' }} />
+                   <span className="text-[7px] text-slate-500 font-bold">OLD</span>
+                 </div>
+                 <div className="flex items-center gap-1">
+                   <div className="w-4 h-[3px] bg-blue-500 rounded-full" />
+                   <span className="text-[7px] text-blue-400 font-bold">NEW</span>
+                 </div>
+               </div>
+             )}
+           </div>
 
            {/* Route Metrics Overlay */}
            {routeData && (

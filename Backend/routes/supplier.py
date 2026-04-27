@@ -88,3 +88,12 @@ def approve_request(request_id: str = Path(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/warehouses", dependencies=[Depends(role_required(["supplier", "admin"]))])
+def list_warehouses():
+    """List all active warehouses for supplier replenishment."""
+    try:
+        db = get_firestore_client()
+        docs = db.collection("warehouses").stream()
+        return [{**doc.to_dict(), "id": doc.id} for doc in docs]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

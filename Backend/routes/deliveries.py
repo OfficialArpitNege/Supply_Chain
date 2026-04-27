@@ -697,6 +697,197 @@ def scale_fleet(payload: FleetScaleRequest):
 
 
 # ──────────────────────────────────────────────
+# Decision-Based Rerouting
+# ──────────────────────────────────────────────
+
+class RerouteRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, description="Optional override reason for the reroute")
+
+@router.post("/{delivery_id}/reroute", dependencies=[Depends(role_required(["admin"]))])
+def reroute_delivery(delivery_id: str = Path(...), payload: Optional[RerouteRequest] = None):
+    """
+    Decision-based reroute: Only applies when the delivery's stored decision
+    warrants rerouting (HIGH risk, disruption flag, or explicit admin override).
+    Recalculates route from the driver's CURRENT position to the destination.
+    Falls back to current route if recalculation fails.
+    """
+    try:
+        db = get_firestore_client()
+        del_ref = db.collection("deliveries").document(delivery_id)
+        doc = del_ref.get()
+
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Delivery not found")
+
+        data = doc.to_dict()
+        status = data.get("status", "")
+
+        # Guard: only reroute deliveries that are actively moving or dispatched
+        if status not in ("dispatched", "in_transit", "nearing", "active"):
+            return {
+                "status": "skipped",
+                "decision": "NO_REROUTE",
+                "message": f"Delivery is '{status}' — not eligible for rerouting."
+            }
+
+        # ── Decision Gate ──
+        # Check if stored state warrants a reroute
+        risk_level = data.get("risk_level", "LOW")
+        recommended_action = (data.get("recommended_action") or "").lower()
+        already_rerouted = data.get("rerouted", False)
+
+        should_reroute = False
+        decision_reason = ""
+
+        # Condition 1: HIGH risk delivery (disruption-affected)
+        if risk_level == "HIGH":
+            should_reroute = True
+            decision_reason = f"HIGH risk level detected"
+
+        # Condition 2: Recommended action explicitly mentions reroute/backup
+        elif any(kw in recommended_action for kw in ["reroute", "backup", "disruption", "critical"]):
+            should_reroute = True
+            decision_reason = f"Stored action recommends reroute: {data.get('recommended_action', '')[:60]}"
+
+        # Condition 3: Admin explicit override via payload
+        elif payload and payload.reason:
+            should_reroute = True
+            decision_reason = f"Admin override: {payload.reason}"
+
+        if not should_reroute:
+            return {
+                "status": "skipped",
+                "decision": "KEEP_CURRENT",
+                "risk_level": risk_level,
+                "recommended_action": data.get("recommended_action"),
+                "message": "No reroute needed — current route is optimal."
+            }
+
+        # ── Execute Reroute ──
+        # 1. Determine current driver position
+        current_idx = data.get("current_index", 0)
+        route_points = data.get("route", [])
+        if current_idx < len(route_points):
+            current_pos = route_points[current_idx]
+        else:
+            current_pos = data.get("start_location", {})
+
+        end_loc = data.get("end_location", {})
+        if not current_pos.get("lat") or not end_loc.get("lat"):
+            return {
+                "status": "error",
+                "decision": "REROUTE",
+                "message": "Cannot reroute — missing location coordinates."
+            }
+
+        # 2. Calculate new route from current position
+        try:
+            rec_request = RecommendRoutesRequest(
+                start_lat=current_pos["lat"],
+                start_lon=current_pos["lon"],
+                end_lat=end_loc["lat"],
+                end_lon=end_loc["lon"]
+            )
+            new_recommendations = recommend_routes(rec_request)
+
+            # Prefer a different route than the current one
+            current_route_id = data.get("selected_route", {}).get("route_id", "")
+            alternatives = [r for r in new_recommendations.routes if r.id != current_route_id]
+            if not alternatives:
+                alternatives = new_recommendations.routes
+
+            best_new = max(alternatives, key=lambda r: r.score)
+            new_route_path = [{"lat": p[0], "lon": p[1]} for p in best_new.route_path]
+
+            # 3. Store old route for visualization, apply new route
+            old_route = data.get("route", [])
+
+            reason_text = (payload.reason if payload and payload.reason
+                           else decision_reason)
+
+            update_data = {
+                "selected_route": {
+                    "route_id": best_new.id,
+                    "distance": round(best_new.distance, 2),
+                    "eta": round(best_new.traffic_eta, 2),
+                    "traffic_speed": round(best_new.traffic_speed, 2),
+                },
+                "route": new_route_path,
+                "old_route": old_route,
+                "current_index": 0,
+                "total_eta": round(best_new.traffic_eta, 2),
+                "eta_remaining": round(best_new.traffic_eta, 2),
+                "distance_remaining": round(best_new.distance, 2),
+                "rerouted": True,
+                "reroute_reason": f"Decision Reroute: {reason_text}",
+                "rerouted_at": datetime.now(timezone.utc),
+                "recommended_action": "REROUTED: New optimal path applied by admin decision.",
+            }
+
+            del_ref.update(update_data)
+            add_notification(
+                "SYSTEM",
+                f"🔀 Delivery #{delivery_id[:8]} rerouted — {reason_text}",
+                "HIGH"
+            )
+
+            return {
+                "status": "success",
+                "decision": "REROUTE",
+                "delivery_id": delivery_id,
+                "reason": reason_text,
+                "new_route_id": best_new.id,
+                "new_distance": round(best_new.distance, 2),
+                "new_eta": round(best_new.traffic_eta, 2),
+                "message": f"Rerouted successfully. New route: {best_new.id} ({round(best_new.distance, 2)} km, ~{round(best_new.traffic_eta, 2)} min)"
+            }
+
+        except Exception as route_err:
+            # ── Fallback: keep current route ──
+            print(f"Reroute calculation failed for {delivery_id}: {route_err}")
+
+            # Try backup route if available
+            backup = data.get("backup_route")
+            if backup and backup.get("route_path"):
+                old_route = data.get("route", [])
+                del_ref.update({
+                    "route": backup["route_path"],
+                    "old_route": old_route,
+                    "selected_route": {
+                        "route_id": backup.get("route_id", "backup"),
+                        "distance": backup.get("distance", 0),
+                        "eta": backup.get("eta", 0),
+                        "traffic_speed": backup.get("traffic_speed", 0),
+                    },
+                    "current_index": 0,
+                    "rerouted": True,
+                    "reroute_reason": "Fallback: Switched to backup route (live recalculation unavailable)",
+                    "rerouted_at": datetime.now(timezone.utc),
+                })
+                return {
+                    "status": "fallback",
+                    "decision": "REROUTE",
+                    "delivery_id": delivery_id,
+                    "message": "Live recalculation failed — applied backup route.",
+                    "new_route_id": backup.get("route_id", "backup"),
+                }
+
+            # No backup available — keep current route
+            return {
+                "status": "kept",
+                "decision": "KEEP_CURRENT",
+                "delivery_id": delivery_id,
+                "message": "Reroute failed and no backup available — keeping current route.",
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Reroute error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ──────────────────────────────────────────────
 # Disruption Injection
 # ──────────────────────────────────────────────
 
@@ -715,7 +906,7 @@ def inject_disruption(payload: DisruptionRequest):
             route_id = data.get("selected_route", {}).get("route_id", "")
             status = data.get("status", "")
 
-            if route_id == payload.affected_route and status in ("active", "waiting"):
+            if route_id == payload.affected_route and status in ("active", "waiting", "in_transit", "dispatched", "nearing"):
                 delivery_id = data.get("delivery_id", doc.id)
                 old_risk = data.get("risk_level", "LOW")
 

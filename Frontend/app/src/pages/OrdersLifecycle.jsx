@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 import { db } from '../config/firebase';
 import { useApp } from '../context/AppContext';
+import destPin from '../assets/destination_pin_v2.png';
 
 const ORDER_STAGES = [
   { key: 'pending', label: 'Pending' },
@@ -67,9 +68,11 @@ const startIcon = new L.Icon({
 });
 
 const destinationIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
-  iconSize: [34, 34],
-  iconAnchor: [17, 34],
+  iconUrl: destPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
 });
 
 const formatTime = (value) => {
@@ -325,7 +328,14 @@ const OrdersLifecycle = ({ customerMode = false }) => {
                         <p className="text-[10px] font-mono text-blue-400">#{order.order_id?.slice(-8)}</p>
                         <h3 className="text-sm font-black text-white truncate">{order.customer_name}</h3>
                       </div>
-                      <StatusPill status={orderLifecycle.status} />
+                      <div className="flex flex-col items-end gap-2">
+                        <StatusPill status={orderLifecycle.status} />
+                        {orderDelivery?.rerouted && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-[7px] font-black text-orange-400 uppercase tracking-widest animate-pulse">
+                            🔀 Rerouted
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 mb-3">
                       <MdSchedule />
@@ -402,6 +412,21 @@ const OrdersLifecycle = ({ customerMode = false }) => {
                   ))}
                 </div>
               </div>
+
+              {selectedDelivery?.rerouted && (
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center gap-3 mb-2">
+                    <MdRoute className="text-orange-400 text-xl" />
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Reroute Alert</p>
+                  </div>
+                  <p className="text-sm font-bold text-white">
+                    {selectedDelivery.reroute_reason || 'System has optimized the path due to detected disruptions.'}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-2 font-medium uppercase tracking-widest">
+                    Live route updated in Driver & Admin interfaces
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 flex-1 min-h-0 overflow-hidden">
                 <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 overflow-y-auto custom-scrollbar">
@@ -544,6 +569,34 @@ const OrdersLifecycle = ({ customerMode = false }) => {
             <div className="absolute top-4 left-4 z-1000 px-4 py-2 bg-slate-900/90 border border-slate-700 rounded-xl text-xs font-black uppercase tracking-widest text-blue-400">
               Live Driver Tracking
             </div>
+            {/* Route Status Label */}
+            <div className={`absolute bottom-4 left-4 right-4 z-1000 p-3 rounded-xl backdrop-blur-md border shadow-lg flex items-center gap-2 ${
+              selectedDelivery.rerouted
+                ? 'bg-orange-500/10 border-orange-500/20'
+                : 'bg-slate-900/80 border-slate-700'
+            }`}>
+              <span className="text-sm">{selectedDelivery.rerouted ? '🔀' : '✅'}</span>
+              <p className={`text-[9px] font-black uppercase tracking-wider ${
+                selectedDelivery.rerouted ? 'text-orange-400' : 'text-blue-400'
+              }`}>
+                {selectedDelivery.rerouted
+                  ? `Rerouted: ${(selectedDelivery.reroute_reason || 'traffic congestion').replace('Dynamic Reroute: ', '').replace('Decision Reroute: ', '')}`
+                  : 'Optimal route retained'
+                }
+              </p>
+              {selectedDelivery.rerouted && (
+                <div className="ml-auto flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <div className="w-4 h-[2px] bg-slate-500 opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #94A3B8 0, #94A3B8 2px, transparent 2px, transparent 5px)' }} />
+                    <span className="text-[7px] text-slate-500 font-bold">OLD</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-4 h-[3px] bg-blue-500 rounded-full" />
+                    <span className="text-[7px] text-blue-400 font-bold">NEW</span>
+                  </div>
+                </div>
+              )}
+            </div>
             <MapContainer
               center={[
                 selectedDelivery.route[selectedDelivery.current_index || 0]?.lat || selectedDelivery.start_location?.lat || 19.076,
@@ -553,8 +606,24 @@ const OrdersLifecycle = ({ customerMode = false }) => {
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+              {/* Old Route (grey, faded, dashed) if rerouted */}
+              {selectedDelivery.rerouted && selectedDelivery.old_route && selectedDelivery.old_route.length > 1 && (
+                <Polyline 
+                  positions={selectedDelivery.old_route.map((p) => [p.lat, p.lon])} 
+                  color="#94A3B8" 
+                  weight={2} 
+                  opacity={0.2}
+                  dashArray="5, 10"
+                />
+              )}
+              {/* Active Route (blue, bold) */}
               {selectedDelivery.route && (
-                <Polyline positions={selectedDelivery.route.map((p) => [p.lat, p.lon])} color="#3b82f6" weight={6} opacity={0.8} />
+                <Polyline 
+                  positions={selectedDelivery.route.map((p) => [p.lat, p.lon])} 
+                  color="#3b82f6" 
+                  weight={selectedDelivery.rerouted ? 6 : 5} 
+                  opacity={selectedDelivery.rerouted ? 0.9 : 0.8} 
+                />
               )}
               {selectedDelivery.start_location && (
                 <Marker position={[selectedDelivery.start_location.lat, selectedDelivery.start_location.lon]} icon={startIcon}>
@@ -562,7 +631,11 @@ const OrdersLifecycle = ({ customerMode = false }) => {
                 </Marker>
               )}
               {selectedDelivery.end_location && (
-                <Marker position={[selectedDelivery.end_location.lat, selectedDelivery.end_location.lon]} icon={destinationIcon}>
+                <Marker 
+                  position={[selectedDelivery.end_location.lat, selectedDelivery.end_location.lon]} 
+                  icon={destinationIcon}
+                  zIndexOffset={1000}
+                >
                   <Popup><div className="text-black text-xs font-black uppercase">Destination</div></Popup>
                 </Marker>
               )}

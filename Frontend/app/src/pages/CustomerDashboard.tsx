@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../config/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
@@ -21,6 +21,7 @@ import {
 } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 import toast, { Toaster } from 'react-hot-toast';
+import destPin from '../assets/destination_pin_v2.png';
 
 // --- Icons ---
 const driverIcon = new L.Icon({
@@ -30,9 +31,11 @@ const driverIcon = new L.Icon({
 });
 
 const destIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
+  iconUrl: destPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
 });
 
 const startIcon = new L.Icon({
@@ -72,7 +75,6 @@ const CustomerDashboard: React.FC = () => {
   const { callApi, currentUser } = useApp();
   const navigate = useNavigate();
   const { orderId: urlOrderId } = useParams<{ orderId: string }>();
-  const [view, setView] = useState<'track' | 'marketplace'>('track');
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [activeDelivery, setActiveDelivery] = useState<any>(null);
@@ -159,7 +161,7 @@ const CustomerDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-3 bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-700">
              <MdPerson className="text-blue-400" />
              <div className="text-left">
@@ -167,18 +169,6 @@ const CustomerDashboard: React.FC = () => {
                <p className="text-[8px] font-medium text-slate-500">{customerInfo.phone}</p>
              </div>
           </div>
-          <button
-            onClick={() => navigate('/customer-orders-lifecycle')}
-            className="px-4 py-2 border border-slate-700 bg-slate-800/70 hover:bg-slate-700 text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
-          >
-            Order Lifecycle
-          </button>
-          <button 
-            onClick={() => setView(view === 'track' ? 'marketplace' : 'track')}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20"
-          >
-            {view === 'track' ? 'New Order' : 'Track Orders'}
-          </button>
         </div>
       </header>
 
@@ -212,7 +202,7 @@ const CustomerDashboard: React.FC = () => {
               displayOrders.map(order => (
                 <div 
                   key={order.id} 
-                  onClick={() => { setSelectedOrderId(order.id); setView('track'); }}
+                  onClick={() => { setSelectedOrderId(order.id); }}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer group ${selectedOrderId === order.id ? 'bg-blue-600/10 border-blue-500 shadow-lg' : 'bg-slate-800/30 border-slate-800 hover:border-slate-700'}`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -232,19 +222,7 @@ const CustomerDashboard: React.FC = () => {
 
         {/* CENTER: Tracking / Marketplace */}
         <section className="col-span-6 relative bg-slate-950 overflow-hidden">
-          {view === 'marketplace' ? (
-             <div className="h-full flex flex-col items-center justify-center p-12 text-center">
-                <MdShoppingBag size={64} className="text-blue-500/20 mb-6" />
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Ready to expand?</h2>
-                <p className="text-slate-400 max-w-md mb-8">Access our full industrial catalog and place new logistics requests instantly.</p>
-                <button 
-                  onClick={() => navigate('/marketplace')}
-                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-blue-500/30 hover:scale-105 transition-all"
-                >
-                  Open Marketplace
-                </button>
-             </div>
-          ) : !selectedOrder ? (
+          {!selectedOrder ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-12">
                <MdLocationOn size={64} className="text-slate-800 mb-6" />
                <h3 className="text-xl font-black text-slate-600 uppercase tracking-widest">Select an order to track</h3>
@@ -267,7 +245,13 @@ const CustomerDashboard: React.FC = () => {
                       <Marker position={[activeDelivery.start_location.lat, activeDelivery.start_location.lon]} icon={startIcon} />
                     )}
                     {activeDelivery?.end_location && (
-                      <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} icon={destIcon} />
+                      <Marker 
+                        position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} 
+                        icon={destIcon}
+                        zIndexOffset={1000}
+                      >
+                        <Popup><div className="text-black font-black uppercase text-xs p-1">Destination</div></Popup>
+                      </Marker>
                     )}
                     {activeDelivery?.rerouted && activeDelivery.old_route && (
                       <Polyline 
@@ -281,16 +265,33 @@ const CustomerDashboard: React.FC = () => {
                     {activeDelivery?.route && (
                       <Polyline 
                         positions={activeDelivery.route.map((p: any) => [p.lat, p.lon])} 
-                        color={activeDelivery.rerouted ? "#10B981" : "#3B82F6"} 
-                        weight={5} 
-                        opacity={0.7} 
+                        color="#3B82F6"
+                        weight={activeDelivery.rerouted ? 6 : 5} 
+                        opacity={activeDelivery.rerouted ? 0.9 : 0.7} 
                       />
                     )}
                   </MapContainer>
 
+                  {/* Route Status Label */}
+                  <div className={`absolute top-6 right-6 z-1000 px-4 py-2.5 rounded-xl backdrop-blur-md border shadow-lg flex items-center gap-2 ${
+                    activeDelivery?.rerouted
+                      ? 'bg-orange-500/10 border-orange-500/20'
+                      : 'bg-slate-900/80 border-slate-700'
+                  }`}>
+                    <span className="text-sm">{activeDelivery?.rerouted ? '🔀' : '✅'}</span>
+                    <p className={`text-[8px] font-black uppercase tracking-widest ${
+                      activeDelivery?.rerouted ? 'text-orange-400' : 'text-blue-400'
+                    }`}>
+                      {activeDelivery?.rerouted
+                        ? `Rerouted: ${(activeDelivery.reroute_reason || 'traffic congestion').replace('Dynamic Reroute: ', '').replace('Decision Reroute: ', '')}`
+                        : 'Optimal route retained'
+                      }
+                    </p>
+                  </div>
+
                   {/* Arriving Soon Overlay */}
                   {isArrivingSoon && (
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-8 py-3 rounded-2xl shadow-2xl z-1000 flex items-center gap-3 animate-bounce">
+                    <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-8 py-3 rounded-2xl shadow-2xl z-1000 flex items-center gap-3 animate-bounce">
                       <MdAccessTime size={20} />
                       <p className="text-xs font-black uppercase tracking-widest">Driver is arriving in {Math.round(activeDelivery.eta_remaining)} mins!</p>
                     </div>

@@ -13,7 +13,8 @@ import {
   MdMenu,
   MdChevronLeft,
   MdSecurity,
-  MdTimeline
+  MdTimeline,
+  MdShoppingBag
 } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 
@@ -27,12 +28,14 @@ const navItems = [
   { path: '/ai-insights', label: 'AI Insights', icon: MdPsychology, roles: ['admin'] },
   { path: '/automation', label: 'Automation', icon: MdAutoGraph, roles: ['admin'] },
   { path: '/users', label: 'User Management', icon: MdSettings, roles: ['admin'] },
+  { path: '/disruptions', label: 'Disruptions & Rerouting', icon: MdSecurity, roles: ['admin'] },
   
   // Role Specific
   { path: '/supplier-dashboard', label: 'Supplier Portal', icon: MdInventory, roles: ['supplier'] },
   { path: '/driver-dashboard', label: 'Driver App', icon: MdLocalShipping, roles: ['driver'] },
   { path: '/customer-dashboard', label: 'Tracking Hub', icon: MdPsychology, roles: ['customer'] },
   { path: '/customer-orders-lifecycle', label: 'Order Lifecycle', icon: MdTimeline, roles: ['customer'] },
+  { path: '/marketplace', label: 'Marketplace', icon: MdShoppingBag, roles: ['customer'] },
 ];
 
 const AppShell = () => {

@@ -17,10 +17,12 @@ import {
   MdCheckCircle,
   MdCancel,
   MdLayers,
-  MdMap
+  MdMap,
+  MdSecurity
 } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 import toast from 'react-hot-toast';
+import destPin from '../assets/destination_pin_v2.png';
 
 // --- Assets ---
 const driverIcon = new L.Icon({
@@ -36,9 +38,11 @@ const warehouseIcon = new L.Icon({
 });
 
 const customerIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
+  iconUrl: destPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
 });
 
 // Helper to auto-center map
@@ -86,11 +90,15 @@ const Dashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState(null);
   const [mapCenter] = useState([19.0760, 72.8777]);
   const [showAssets, setShowAssets] = useState(false);
   const [newWh, setNewWh] = useState({ name: '', lat: 19.0760, lon: 72.8777, capacity: 1000 });
   const [approvingRequestIds, setApprovingRequestIds] = useState(new Set());
+  const [lastDisruption, setLastDisruption] = useState(null);
+  const [reroutingId, setReroutingId] = useState(null);
+
+  const selectedDelivery = deliveries.find(d => d.id === selectedDeliveryId) || null;
 
   useEffect(() => {
     // 1. Pending Orders
@@ -175,7 +183,7 @@ const Dashboard = () => {
 
   const handleDisruption = async (type) => {
     try {
-      await callApi('/deliveries/disrupt', {
+      const res = await callApi('/deliveries/disrupt', {
         method: 'POST',
         body: JSON.stringify({
           type,
@@ -183,9 +191,40 @@ const Dashboard = () => {
           severity: 'HIGH'
         })
       });
-      toast.error(`System disrupted: ${type.replace('_', ' ').toUpperCase()}`);
+      setLastDisruption({
+        type,
+        affected_count: res.affected_count || 0,
+        system_risk: res.system_risk_level || 'UNKNOWN',
+        timestamp: Date.now()
+      });
+      if (res.affected_count > 0) {
+        toast.error(`⚠️ ${res.affected_count} deliveries affected by ${type.replace('_', ' ')}`);
+      } else {
+        toast(`Disruption injected — no active deliveries affected`, { icon: '📡' });
+      }
     } catch (e) {
       toast.error(e.message);
+    }
+  };
+
+  const handleReroute = async (deliveryId) => {
+    if (reroutingId) return;
+    setReroutingId(deliveryId);
+    const tid = toast.loading('Calculating new route...');
+    try {
+      const res = await callApi(`/deliveries/${deliveryId}/reroute`, {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+      if (res.decision === 'REROUTE') {
+        toast.success(res.message, { id: tid });
+      } else {
+        toast(res.message, { id: tid, icon: 'ℹ️' });
+      }
+    } catch (e) {
+      toast.error(e.message, { id: tid });
+    } finally {
+      setReroutingId(null);
     }
   };
 
@@ -386,7 +425,7 @@ const Dashboard = () => {
                   })}
 
                   {deliveries.map(d => {
-                    const isSelected = selectedDelivery?.id === d.id;
+                    const isSelected = selectedDeliveryId === d.id;
                     const point = d.route?.[d.current_index || 0];
                     const validRoute = d.route?.filter(p => p && p.lat !== undefined && p.lon !== undefined) || [];
 
@@ -408,16 +447,22 @@ const Dashboard = () => {
                         {validRoute.length > 1 && (
                           <Polyline
                             positions={validRoute.map(p => [p.lat, p.lon])}
-                            color={isSelected ? '#3B82F6' : (d.risk_level === 'HIGH' ? '#EF4444' : (d.rerouted ? '#10B981' : '#64748B'))}
-                            weight={isSelected ? 6 : 3}
-                            opacity={isSelected ? 1 : 0.6}
+                            color={isSelected ? '#F59E0B' : (d.rerouted ? '#F59E0B' : (d.risk_level === 'HIGH' ? '#EF4444' : '#3B82F6'))}
+                            weight={isSelected ? 6 : (d.rerouted ? 5 : 3)}
+                            opacity={isSelected ? 1 : (d.rerouted ? 0.9 : 0.6)}
                           />
                         )}
-                        <Marker position={[point.lat, point.lon]} icon={driverIcon} eventHandlers={{ click: () => setSelectedDelivery(d) }}>
+                        <Marker position={[point.lat, point.lon]} icon={driverIcon} eventHandlers={{ click: () => setSelectedDeliveryId(d.id) }}>
                           <Popup><div className="text-xs font-black uppercase text-slate-900">DELIVERY #{d.delivery_id?.slice(-4)}</div></Popup>
                         </Marker>
                         {d.end_location?.lat !== undefined && d.end_location?.lon !== undefined && (
-                          <Marker position={[d.end_location.lat, d.end_location.lon]} icon={customerIcon} />
+                          <Marker 
+                            position={[d.end_location.lat, d.end_location.lon]} 
+                            icon={customerIcon}
+                            zIndexOffset={1000}
+                          >
+                            <Popup><div className="text-xs font-black uppercase text-slate-900">Destination</div></Popup>
+                          </Marker>
                         )}
                       </React.Fragment>
                     );
@@ -425,13 +470,13 @@ const Dashboard = () => {
                 </MapContainer>
 
                 {selectedDelivery && (
-                  <div className="absolute top-6 left-6 z-1000 w-72 bg-[#1E293B]/90 backdrop-blur-md border border-blue-500/50 rounded-2xl p-5 shadow-2xl animate-fadeIn">
+                  <div className="absolute top-6 left-6 z-1000 w-72 bg-[#1E293B]/90 backdrop-blur-md border border-orange-500/50 rounded-2xl p-5 shadow-2xl animate-fadeIn">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Selected Delivery</p>
+                        <p className="text-[8px] font-black text-orange-400 uppercase tracking-widest">Selected Delivery</p>
                         <h3 className="text-xl font-black text-white">#{selectedDelivery.delivery_id?.slice(-8)}</h3>
                       </div>
-                      <button onClick={() => setSelectedDelivery(null)} className="text-slate-400 hover:text-white">✕</button>
+                      <button onClick={() => setSelectedDeliveryId(null)} className="text-slate-400 hover:text-white">✕</button>
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="bg-slate-800 p-2 rounded-xl">
@@ -443,9 +488,58 @@ const Dashboard = () => {
                         <p className="text-[10px] font-bold text-orange-400">{selectedDelivery.eta_remaining || '--'} min</p>
                       </div>
                     </div>
-                    <div className={`p-3 rounded-xl text-[10px] italic border ${selectedDelivery.risk_level === 'HIGH' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
-                      {selectedDelivery.risk_level === 'HIGH' ? 'High risk disruption detected' : 'Optimal route conditions'}
+
+                    {/* Route Status Label */}
+                    <div className={`p-3 rounded-xl text-[10px] font-bold border flex items-center gap-2 mb-3 ${
+                      selectedDelivery.rerouted
+                        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                    }`}>
+                      <span>{selectedDelivery.rerouted ? '🔀' : '✅'}</span>
+                      <span>
+                        {selectedDelivery.rerouted
+                          ? `Rerouted: ${(selectedDelivery.reroute_reason || 'traffic congestion').replace('Dynamic Reroute: ', '').replace('Decision Reroute: ', '')}`
+                          : 'Optimal route retained'
+                        }
+                      </span>
                     </div>
+                    {selectedDelivery.rerouted && (
+                      <div className="flex items-center gap-4 mb-3 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-[2px] bg-slate-500 opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #94A3B8 0, #94A3B8 3px, transparent 3px, transparent 6px)' }} />
+                          <span className="text-[8px] text-slate-500 font-bold uppercase">Old</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-[3px] bg-blue-500 rounded-full" />
+                          <span className="text-[8px] text-blue-400 font-bold uppercase">New</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className={`p-3 rounded-xl text-[10px] italic border ${selectedDelivery.risk_level === 'HIGH' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                      {selectedDelivery.rerouted
+                        ? `⚠️ ${selectedDelivery.reroute_reason || 'Rerouted due to disruption'}`
+                        : selectedDelivery.risk_level === 'HIGH'
+                          ? 'High risk disruption detected'
+                          : 'Optimal route conditions'
+                      }
+                    </div>
+                    {selectedDelivery.rerouted && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Rerouted — New Path Active</p>
+                      </div>
+                    )}
+                    {/* Reroute Button — shown for HIGH risk, in-transit deliveries */}
+                    {selectedDelivery.risk_level === 'HIGH' && 
+                     ['dispatched', 'in_transit', 'nearing', 'active'].includes(selectedDelivery.status) && (
+                      <button
+                        onClick={() => handleReroute(selectedDelivery.delivery_id || selectedDelivery.id)}
+                        disabled={reroutingId === (selectedDelivery.delivery_id || selectedDelivery.id)}
+                        className="mt-4 w-full bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-orange-900/20"
+                      >
+                        {reroutingId === (selectedDelivery.delivery_id || selectedDelivery.id) ? 'Calculating...' : '🔀 Reroute Delivery'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -453,24 +547,34 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* 3. Disruption Controls */}
+        {/* 3. Operational Awareness */}
         <div className="col-span-3 flex flex-col gap-6">
-          <div className="flex-1 bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl p-8 flex flex-col justify-center text-center">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8">System Disruption Controls</h3>
-            <div className="space-y-4">
-              <button onClick={() => handleDisruption('traffic_spike')} className="w-full group bg-slate-900 hover:bg-orange-500/10 border border-slate-700 hover:border-orange-500/50 p-5 rounded-2xl flex items-center justify-between transition-all">
-                <span className="text-[10px] font-black text-slate-400 group-hover:text-orange-400 uppercase tracking-widest">Traffic Spike</span>
-                <MdWarning className="text-slate-700 group-hover:text-orange-500 transition-colors" />
-              </button>
-              <button onClick={() => handleDisruption('road_closure')} className="w-full group bg-slate-900 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/50 p-5 rounded-2xl flex items-center justify-between transition-all">
-                <span className="text-[10px] font-black text-slate-400 group-hover:text-red-400 uppercase tracking-widest">Road Closure</span>
-                <MdWarning className="text-slate-700 group-hover:text-red-500 transition-colors" />
-              </button>
-              <button onClick={() => handleDisruption('weather_event')} className="w-full group bg-slate-900 hover:bg-blue-500/10 border border-slate-700 hover:border-blue-500/50 p-5 rounded-2xl flex items-center justify-between transition-all">
-                <span className="text-[10px] font-black text-slate-400 group-hover:text-blue-400 uppercase tracking-widest">Weather Event</span>
-                <MdWarning className="text-slate-700 group-hover:text-blue-500 transition-colors" />
+          {/* Disruption Alert Banner */}
+          {lastDisruption && lastDisruption.affected_count > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 animate-pulse shadow-lg shadow-red-900/10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Disruption Active</p>
+              </div>
+              <p className="text-2xl font-black text-white mb-1">⚠️ {lastDisruption.affected_count} <span className="text-sm text-red-400">deliveries affected</span></p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                {lastDisruption.type.replace('_', ' ')} • Risk Level: <span className={`${lastDisruption.system_risk === 'CRITICAL' ? 'text-red-400' : 'text-orange-400'}`}>{lastDisruption.system_risk}</span>
+              </p>
+              <button
+                onClick={() => setLastDisruption(null)}
+                className="mt-3 text-[8px] font-black text-slate-500 hover:text-slate-300 uppercase tracking-widest transition-colors"
+              >
+                Dismiss ✕
               </button>
             </div>
+          )}
+
+          <div className="flex-1 bg-[#1E293B] border border-slate-700 rounded-3xl shadow-xl p-8 flex flex-col items-center justify-center text-center">
+             <MdSecurity size={48} className="text-slate-700 mb-4" />
+             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Security Protocol Active</h3>
+             <p className="text-[10px] text-slate-600 font-medium leading-relaxed">
+               All operational disruptions are now managed via the dedicated <span className="text-blue-500 font-bold">Disruption Hub</span>.
+             </p>
           </div>
         </div>
       </div>

@@ -9,7 +9,8 @@ const SupplierDashboard: React.FC = () => {
   const [name, setName] = useState('');
   const [qty, setQty] = useState(0);
   const [price, setPrice] = useState(0);
-  const [warehouseId, setWarehouseId] = useState('WH-001');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const { currentUser, callApi } = useApp();
 
@@ -17,8 +18,22 @@ const SupplierDashboard: React.FC = () => {
     const unsub = onSnapshot(query(collection(db, 'supplier_requests'), orderBy('created_at', 'desc')), (snap) => {
       setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
+
+    const fetchWarehouses = async () => {
+      try {
+        const data = await callApi('/supplier/warehouses');
+        setWarehouses(data);
+        if (data.length > 0) {
+          setWarehouseId(data[0].id);
+        }
+      } catch (e) {
+        console.error("Failed to fetch warehouses", e);
+      }
+    };
+    fetchWarehouses();
+
     return () => unsub();
-  }, []);
+  }, [callApi]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,9 +89,10 @@ const SupplierDashboard: React.FC = () => {
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase">Warehouse</label>
                 <select value={warehouseId} onChange={e => setWarehouseId(e.target.value)} className="w-full bg-[#0a0a0f] border border-gray-800 p-3 rounded-xl focus:border-emerald-500 outline-none">
-                  <option value="WH-001">Mumbai Central Hub</option>
-                  <option value="WH-002">Andheri DC</option>
-                  <option value="WH-003">Navi Mumbai WH</option>
+                  {warehouses.map(wh => (
+                    <option key={wh.id} value={wh.id}>{wh.name}</option>
+                  ))}
+                  {warehouses.length === 0 && <option value="">No warehouses available</option>}
                 </select>
               </div>
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-900/20 transition-all">

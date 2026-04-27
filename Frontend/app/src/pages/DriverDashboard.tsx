@@ -7,6 +7,7 @@ import { MdLocalShipping, MdMap, MdPlayArrow, MdFastForward, MdCheckCircle } fro
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import destPin from '../assets/destination_pin_v2.png';
 
 // --- Assets ---
 const driverIcon = new L.Icon({
@@ -22,9 +23,11 @@ const warehouseIcon = new L.Icon({
 });
 
 const destinationIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1067/1067555.png',
-  iconSize: [34, 34],
-  iconAnchor: [17, 34],
+  iconUrl: destPin,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  shadowUrl: null
 });
 
 const DriverDashboard: React.FC = () => {
@@ -276,7 +279,8 @@ const DriverDashboard: React.FC = () => {
               Live Tactical Map
             </div>
             {currentPoint ? (
-              <MapContainer center={[currentPoint.lat, currentPoint.lon]} zoom={14} style={{ height: '100%', width: '100%', background: '#0f172a' }}>
+              <>
+                <MapContainer center={[currentPoint.lat, currentPoint.lon]} zoom={14} style={{ height: '100%', width: '100%', background: '#0f172a' }}>
                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                 
                 {/* Old Route (Faded) if rerouted */}
@@ -294,8 +298,8 @@ const DriverDashboard: React.FC = () => {
                 {activeDelivery.route && (
                   <Polyline 
                     positions={activeDelivery.route.map((p: any) => [p.lat, p.lon])} 
-                    color={activeDelivery.rerouted ? "#10b981" : "#3b82f6"} 
-                    weight={6} 
+                    color="#3b82f6"
+                    weight={activeDelivery.rerouted ? 6 : 5}
                     opacity={0.8}
                   />
                 )}
@@ -317,11 +321,45 @@ const DriverDashboard: React.FC = () => {
 
                 {/* Destination Marker */}
                 {activeDelivery.end_location && (
-                  <Marker position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} icon={destinationIcon}>
+                  <Marker 
+                    position={[activeDelivery.end_location.lat, activeDelivery.end_location.lon]} 
+                    icon={destinationIcon}
+                    zIndexOffset={1000}
+                  >
                     <Popup><div className="text-black font-black uppercase text-xs p-1">Destination</div></Popup>
                   </Marker>
                 )}
               </MapContainer>
+
+              {/* Route Status Label */}
+              <div className={`absolute bottom-6 left-6 right-6 z-1000 p-3 rounded-2xl backdrop-blur-md border shadow-xl flex items-center gap-2 ${
+                activeDelivery.rerouted
+                  ? 'bg-orange-500/10 border-orange-500/20'
+                  : 'bg-slate-900/80 border-slate-700'
+              }`}>
+                <span className="text-sm">{activeDelivery.rerouted ? '🔀' : '✅'}</span>
+                <p className={`text-[9px] font-black uppercase tracking-wider ${
+                  activeDelivery.rerouted ? 'text-orange-400' : 'text-blue-400'
+                }`}>
+                  {activeDelivery.rerouted
+                    ? `Rerouted: ${(activeDelivery.reroute_reason || 'traffic congestion').replace('Dynamic Reroute: ', '').replace('Decision Reroute: ', '')}`
+                    : 'Optimal route retained'
+                  }
+                </p>
+                {activeDelivery.rerouted && (
+                  <div className="ml-auto flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-[2px] bg-slate-500 opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #94A3B8 0, #94A3B8 2px, transparent 2px, transparent 5px)' }} />
+                      <span className="text-[7px] text-slate-500 font-bold">OLD</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-[3px] bg-blue-500 rounded-full" />
+                      <span className="text-[7px] text-blue-400 font-bold">NEW</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-600">
                 <MdMap size={48} className="mb-4 opacity-20" />

@@ -22,6 +22,7 @@ import DriverDashboard from './pages/DriverDashboard';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerDashboard from './pages/CustomerDashboard';
 import CustomerOrdersLifecycle from './pages/CustomerOrdersLifecycle';
+import DisruptionManagement from './pages/DisruptionManagement';
 
 // Placeholders for remaining modules
 import { 
@@ -111,6 +112,12 @@ function App() {
               <Route path="automation" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Automation />
+                </ProtectedRoute>
+              } />
+
+              <Route path="disruptions" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <DisruptionManagement />
                 </ProtectedRoute>
               } />
 
