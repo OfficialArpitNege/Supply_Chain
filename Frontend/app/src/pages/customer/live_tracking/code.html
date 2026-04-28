@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SmartSupply - Live Order Tracking</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#191c1e",
+                    "secondary-container": "#d5e3fc",
+                    "surface-container-low": "#f2f4f6",
+                    "tertiary-fixed-dim": "#ffb780",
+                    "on-tertiary-fixed-variant": "#6f3800",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#8ebdf9",
+                    "surface-container": "#eceef0",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary": "#532800",
+                    "error-container": "#ffdad6",
+                    "background": "#f7f9fb",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-container": "#f9a767",
+                    "secondary-fixed": "#d5e3fc",
+                    "secondary": "#515f74",
+                    "surface-variant": "#e0e3e5",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#2f1400",
+                    "on-primary-fixed": "#001c37",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container-high": "#e6e8ea",
+                    "outline": "#727780",
+                    "surface-dim": "#d8dadc",
+                    "outline-variant": "#c2c7d1",
+                    "surface": "#f7f9fb",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "on-primary": "#ffffff",
+                    "primary": "#00355f",
+                    "tertiary-fixed": "#ffdcc4",
+                    "tertiary-container": "#743b00",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-tint": "#2d6197",
+                    "primary-fixed": "#d2e4ff",
+                    "primary-container": "#0f4c81",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#42474f",
+                    "on-secondary-container": "#57657a",
+                    "primary-fixed-dim": "#a0c9ff",
+                    "inverse-surface": "#2d3133",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#a0c9ff",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed-variant": "#07497d",
+                    "surface-bright": "#f7f9fb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xs": "8px",
+                    "lg": "32px",
+                    "md": "24px",
+                    "sm": "16px",
+                    "xl": "48px",
+                    "gutter": "24px",
+                    "margin": "32px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "data-tabular": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "title-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "data-tabular": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24
+    }
+.map-texture {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuD-h8nXI2fUe3fPvDPCLX-nrVqMl--szHKEoUMgcoMbQ7CD_NcQrprZA4UllYOBuhUtSbv8yYvEsFiy_6lScedGVWq8m9vVz6arQsiPEBEDEi7MYUgFuYFWoJPhUcS-ShFotToFXzbl5krLVrP1zx4ZCvP62B2Ec-__PmoBDufvt9IcURUuePJXrDmQrXodk7Widh1Y2DWztYaPFeK-isWBlAkM3QvH4Avt6vqpBv_aSLHvUHyHgf8UWdy2lhkxB8z2Ds3VBsrDpA);
+    background-size: cover;
+    background-position: center
+    }</style>
+</head>
+<body class="bg-background font-body-md text-on-surface">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full w-[280px] border-r border-slate-200 bg-white z-50 flex flex-col py-6 px-4">
+<div class="mb-lg px-2">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-blue-900 tracking-tight">SmartSupply</h1>
+<p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Global Logistics</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200 ease-in-out font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200 ease-in-out font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+                Product Search
+            </a>
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200 ease-in-out font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+                Place Order
+            </a>
+<a class="flex items-center gap-sm px-4 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700 rounded-l-lg transition-all duration-200 ease-in-out font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+                Order Tracking
+            </a>
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200 ease-in-out font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+                Orders List
+            </a>
+</nav>
+<div class="pt-6 border-t border-slate-200 space-y-1">
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+<a class="flex items-center gap-sm px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 right-0 left-[280px] z-40 flex justify-between items-center px-6 h-16 bg-white border-b border-slate-200">
+<div class="flex items-center flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary-container outline-none" placeholder="Track shipment ID..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex gap-sm">
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-slate-200"></div>
+<div class="flex items-center gap-sm">
+<div class="text-right">
+<p class="text-sm font-bold text-slate-900">Alex Thompson</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Supply Manager</p>
+</div>
+<img alt="User Profile" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" data-alt="professional portrait of a man in his 30s with a clean-cut look and friendly expression in an office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa2seOUTGeuocnXgcJNQgamr-f9CPPBc37px8TDzMGCLQBiq76beiknGWmKhiaM3yDxSNIE39nuJ4LDkfDQytQxdeqYUX6K5isqzBp4KP7PvX8_kxrROYo9G-9sprPivIFZU9sZVQW1UO177ATppZ5zs5sF870-DpPJFhO_IQ1fYL6q3trdC4gnJXtBs0br12J3TGRr9viJi8kNSdyAwSZBD5j1yYEkwTg28P2_8rmWPIDyalo3vfNt_tMjJGeCdY_54SI0WVtgA"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] pt-16 min-h-screen p-gutter">
+<div class="flex flex-col gap-gutter">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-xs text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">
+<span>Shipments</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-blue-600">ORD-5592-XK</span>
+</nav>
+<h2 class="text-display-lg font-display-lg text-primary">Live Order Tracking</h2>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-xs px-sm py-2 bg-white border border-outline-variant text-slate-700 rounded font-bold text-sm hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-sm">share</span>
+                        Share Tracking
+                    </button>
+<button class="flex items-center gap-xs px-sm py-2 bg-primary text-white rounded font-bold text-sm hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm">contact_support</span>
+                        Contact Support
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Main Map View - 8 Columns -->
+<div class="col-span-12 lg:col-span-8 space-y-gutter">
+<!-- Alert Banner -->
+<div class="bg-primary-container text-white px-lg py-sm rounded-xl flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined animate-pulse text-secondary-fixed">info</span>
+<span class="font-bold text-sm tracking-wide">Live Update: Arriving in 10 mins</span>
+</div>
+<span class="text-xs bg-white/20 px-2 py-1 rounded font-bold">On Schedule</span>
+</div>
+<!-- Map Simulation Container -->
+<div class="relative bg-white rounded-xl border border-slate-200 overflow-hidden h-[500px] shadow-sm">
+<div class="absolute inset-0 map-texture" data-alt="high detail street map of an urban area with clean grey and blue tones, highlighted transit routes and logistics hubs" data-location="Chicago" style=""></div>
+<!-- Simulated Route Line -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" viewbox="0 0 800 500">
+<path d="M 100 400 L 300 350 L 500 200 L 700 100" fill="none" opacity="0.6" stroke="#0f4c81" stroke-dasharray="8 4" stroke-width="4"></path>
+<!-- Destination Marker -->
+<circle cx="700" cy="100" fill="#ba1a1a" r="12"></circle>
+<circle class="animate-ping" cx="700" cy="100" fill="none" r="24" stroke="#ba1a1a" stroke-width="2"></circle>
+</svg>
+<!-- Driver Icon (Animated Position) -->
+<div class="absolute top-[200px] left-[500px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white ring-4 ring-primary/20">
+<span class="material-symbols-outlined block" data-icon="local_shipping" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div class="mt-2 bg-white px-3 py-1 rounded shadow text-[10px] font-black text-primary border border-slate-100">
+                                VEH-9942
+                            </div>
+</div>
+<!-- Map Controls Overlay -->
+<div class="absolute bottom-md right-md flex flex-col gap-xs">
+<button class="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-50"><span class="material-symbols-outlined">add</span></button>
+<button class="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-50"><span class="material-symbols-outlined">remove</span></button>
+<button class="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-50 mt-2"><span class="material-symbols-outlined">my_location</span></button>
+</div>
+</div>
+</div>
+<!-- Info Panel - 4 Columns -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-gutter">
+<!-- Driver Info Card -->
+<div class="bg-white p-lg rounded-xl border border-slate-200 shadow-sm">
+<h3 class="text-label-caps text-slate-500 mb-md uppercase">Current Shipment Details</h3>
+<div class="flex items-center gap-md mb-lg">
+<img alt="Driver Profile" class="w-16 h-16 rounded-xl object-cover grayscale" data-alt="professional driver in uniform with a focused expression, warm natural lighting in a cabin setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx4bKRaoqRbDaR0SkLFyAB8xm4_W0Q5p-CWaCBU4XNJ9ejljQu77Stk4Tz-pngdXB-u4qBcI5-roUI9nRUUgdVSbcIiWHMEPPy_DsTVUNfCACXMDMW4MgeimGSrp3kXM-YNjlyLD4Sdy0RFHZJ7s86Zsvy45irucWAs_qyoChFCZqzQtfou6ahhiWp9tgvo4mcLW7T0d6D-xpc1pqxDAemaA6MfllF7dY8Wju1gAq1N9wdcPT9EIjcunJpz1dlB9BSpg8IdPLyRw"/>
+<div>
+<h4 class="text-title-sm text-primary">Marcus Vancity</h4>
+<p class="text-body-sm text-slate-500">Vehicle: <span class="font-bold text-slate-900">Freightliner M2</span></p>
+<p class="text-body-sm text-slate-500">ID: <span class="font-bold text-slate-900">VEH-9942-B</span></p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-sm pt-md border-t border-slate-100">
+<div class="bg-surface-container-low p-sm rounded-lg">
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">ETA</p>
+<p class="text-headline-md font-display-lg text-primary">12 <span class="text-body-sm font-bold">mins</span></p>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg">
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Distance</p>
+<p class="text-headline-md font-display-lg text-primary">4.2 <span class="text-body-sm font-bold">km</span></p>
+</div>
+</div>
+</div>
+<!-- Order Items List -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+<div class="p-md bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+<h3 class="text-label-caps text-slate-900 uppercase">Order Inventory</h3>
+<span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">4 ITEMS</span>
+</div>
+<div class="divide-y divide-slate-100">
+<!-- Item 1 -->
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 leading-tight">CPU Processors - X1</p>
+<p class="text-[10px] text-slate-500 font-medium">SKU: SS-2044-X</p>
+</div>
+</div>
+<p class="text-sm font-bold text-slate-900">12 Units</p>
+</div>
+<!-- Item 2 -->
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">power_settings_new</span>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 leading-tight">Power Modules 500W</p>
+<p class="text-[10px] text-slate-500 font-medium">SKU: SS-500P-W</p>
+</div>
+</div>
+<p class="text-sm font-bold text-slate-900">40 Units</p>
+</div>
+<!-- Item 3 -->
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900 leading-tight">I/O Interface Boards</p>
+<p class="text-[10px] text-slate-500 font-medium">SKU: SS-IO-99</p>
+</div>
+</div>
+<p class="text-sm font-bold text-slate-900">08 Units</p>
+</div>
+</div>
+<button class="p-md text-center text-xs font-bold text-blue-700 hover:bg-slate-50 transition-colors uppercase tracking-widest border-t border-slate-100">
+                            View Full Manifest
+                        </button>
+</div>
+<!-- Quick Status Timeline (Minimal) -->
+<div class="bg-white p-lg rounded-xl border border-slate-200 shadow-sm">
+<h3 class="text-label-caps text-slate-500 mb-md uppercase">History</h3>
+<div class="relative pl-6 border-l-2 border-slate-100 space-y-md">
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-blue-700 border-4 border-white shadow-sm"></div>
+<p class="text-xs font-black text-slate-900">Out for Delivery</p>
+<p class="text-[10px] text-slate-500">08:45 AM - Central Hub</p>
+</div>
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-slate-200 border-4 border-white"></div>
+<p class="text-xs font-bold text-slate-600">Loaded into Vehicle</p>
+<p class="text-[10px] text-slate-400">06:20 AM - Loading Dock 4</p>
+</div>
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-slate-200 border-4 border-white"></div>
+<p class="text-xs font-bold text-slate-600">Order Dispatched</p>
+<p class="text-[10px] text-slate-400">Yesterday - Warehouse A</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SmartSupply - Place Order</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#191c1e",
+                        "secondary-container": "#d5e3fc",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#8ebdf9",
+                        "surface-container": "#eceef0",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#532800",
+                        "error-container": "#ffdad6",
+                        "background": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#f9a767",
+                        "secondary-fixed": "#d5e3fc",
+                        "secondary": "#515f74",
+                        "surface-variant": "#e0e3e5",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#2f1400",
+                        "on-primary-fixed": "#001c37",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container-high": "#e6e8ea",
+                        "outline": "#727780",
+                        "surface-dim": "#d8dadc",
+                        "outline-variant": "#c2c7d1",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-primary": "#ffffff",
+                        "primary": "#00355f",
+                        "tertiary-fixed": "#ffdcc4",
+                        "tertiary-container": "#743b00",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#2d6197",
+                        "primary-fixed": "#d2e4ff",
+                        "primary-container": "#0f4c81",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#42474f",
+                        "on-secondary-container": "#57657a",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "inverse-surface": "#2d3133",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#a0c9ff",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#07497d",
+                        "surface-bright": "#f7f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xs": "8px",
+                        "lg": "32px",
+                        "md": "24px",
+                        "sm": "16px",
+                        "xl": "48px",
+                        "gutter": "24px",
+                        "margin": "32px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "data-tabular": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "title-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "data-tabular": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f7f9fb;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[280px] border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col py-6 px-4 z-50">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-blue-900 dark:text-blue-100 leading-none">SmartSupply</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Global Logistics</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span>Product Search</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-4 border-blue-700 dark:border-blue-400 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
+<span>Place Order</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span>Order Tracking</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span>Orders List</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[280px] z-40 flex justify-between items-center px-6 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-sm" data-icon="search">search</span>
+</span>
+<input class="pl-10 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary w-64" placeholder="Search orders, products..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right">
+<p class="text-sm font-bold text-slate-900">Alex Thompson</p>
+<p class="text-[10px] text-slate-500 uppercase font-bold">Logistics Manager</p>
+</div>
+<img alt="User Profile" class="w-10 h-10 rounded-full border border-slate-200" data-alt="professional portrait of a man in business attire with a confident expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnZfeW0HMMM98UHUXGNRcgR-e8YLETyyE22kCUjOjJF1G3SOt6GxwKuAqzD3QG4zaiZp_BIZhUcLeV53lPITBBuwoe73SzMuMHgGCbjyuXnx7lKZqyWfmER3eJBGUhGObkshj5YeXCT9dqZQKCLnpWrZHBTXMvxbthTm6rCBZ1kMstEiS2XE7-1a2kqoJ5qNjwQO5Rp6qX9vBDuDNWbMgJhq0f_dE1jpqM8DsKFg7Yc_Yfvj5x34pjiP7RWVx8K1YpPW800BbuEQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[280px] pt-16 min-h-screen p-8">
+<div class="max-w-6xl mx-auto">
+<!-- Header Section -->
+<div class="mb-8">
+<nav class="flex mb-4 text-xs font-bold text-slate-400 uppercase tracking-wider gap-2">
+<a class="hover:text-primary" href="#">Dashboard</a>
+<span>/</span>
+<span class="text-primary">Place Order</span>
+</nav>
+<h2 class="font-display-lg text-display-lg text-primary">New Supply Order</h2>
+<p class="text-slate-500 mt-2 font-body-md">Configure your inventory replenishment and distribution requirements.</p>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<!-- Order Form -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Product Selection -->
+<div class="bg-white border border-slate-200 rounded-xl p-6">
+<label class="block font-label-caps text-label-caps text-slate-500 mb-4 uppercase">Select Supply Category</label>
+<div class="grid grid-cols-3 gap-3 mb-6">
+<button class="flex flex-col items-center gap-2 p-4 border-2 border-primary bg-primary/5 rounded-xl transition-all">
+<span class="material-symbols-outlined text-primary" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="text-xs font-bold text-primary">Electronics</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-4 border border-slate-200 hover:border-primary/30 rounded-xl transition-all">
+<span class="material-symbols-outlined text-slate-400" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="text-xs font-bold text-slate-600">Raw Materials</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-4 border border-slate-200 hover:border-primary/30 rounded-xl transition-all">
+<span class="material-symbols-outlined text-slate-400" data-icon="medical_services">medical_services</span>
+<span class="text-xs font-bold text-slate-600">Healthcare</span>
+</button>
+</div>
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">Product Model</label>
+<div class="relative">
+<select class="w-full pl-4 pr-10 py-3 bg-white border border-slate-300 rounded-lg text-body-md appearance-none focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+<option>X-Core Semiconductor Unit (V4.2)</option>
+<option>G-Link Network Bridge</option>
+<option>T-Series Solid State Module</option>
+<option>Quantum Relay Controller</option>
+</select>
+<span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+<span class="material-symbols-outlined" data-icon="expand_more">expand_more</span>
+</span>
+</div>
+</div>
+<!-- Logistics Details -->
+<div class="bg-white border border-slate-200 rounded-xl p-6">
+<h3 class="font-title-sm text-title-sm text-primary mb-6">Logistics &amp; Quantity</h3>
+<div class="grid grid-cols-2 gap-6">
+<div>
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">Order Quantity</label>
+<div class="flex items-center h-[50px] border border-slate-300 rounded-lg overflow-hidden">
+<button class="w-12 h-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="remove">remove</span>
+</button>
+<input class="flex-1 text-center font-data-tabular text-body-md border-none focus:ring-0" type="number" value="150"/>
+<button class="w-12 h-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">Priority Level</label>
+<div class="flex gap-2">
+<button class="flex-1 py-3 px-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-primary">Standard</button>
+<button class="flex-1 py-3 px-2 border-2 border-primary bg-primary text-white rounded-lg text-xs font-bold">Express</button>
+</div>
+</div>
+</div>
+<div class="mt-6">
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">Delivery Destination</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</span>
+<input class="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg text-body-md focus:ring-2 focus:ring-primary outline-none" placeholder="Enter warehouse address or facility code" type="text"/>
+</div>
+</div>
+<div class="mt-6">
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">On-Site Contact Number</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</span>
+<input class="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg text-body-md focus:ring-2 focus:ring-primary outline-none" placeholder="+1 (555) 000-0000" type="tel"/>
+</div>
+</div>
+</div>
+<!-- Additional Notes -->
+<div class="bg-white border border-slate-200 rounded-xl p-6">
+<label class="block font-label-caps text-label-caps text-slate-500 mb-2 uppercase">Handling Instructions (Optional)</label>
+<textarea class="w-full p-4 border border-slate-300 rounded-lg text-body-md focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Specify any special handling, storage requirements, or gate access codes..." rows="3"></textarea>
+</div>
+</div>
+<!-- Order Summary Sidebar -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-24">
+<div class="bg-slate-50 p-6 border-b border-slate-200">
+<h3 class="font-title-sm text-title-sm text-primary">Order Summary</h3>
+<p class="text-xs text-slate-500 font-medium">Review your shipment details</p>
+</div>
+<div class="p-6 space-y-4">
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500">Subtotal (150 units)</span>
+<span class="font-data-tabular text-slate-900">$18,750.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500">Express Shipping</span>
+<span class="font-data-tabular text-slate-900">$450.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500">Export Duties &amp; Taxes</span>
+<span class="font-data-tabular text-slate-900">$1,240.00</span>
+</div>
+<div class="border-t border-dashed border-slate-200 pt-4 mt-4">
+<div class="flex justify-between items-end">
+<span class="font-bold text-primary">Total Amount</span>
+<span class="text-2xl font-black text-primary font-data-tabular">$20,440.00</span>
+</div>
+</div>
+<div class="bg-blue-50/50 rounded-lg p-4 border border-blue-100 flex gap-3 mt-6">
+<span class="material-symbols-outlined text-blue-600" data-icon="local_shipping">local_shipping</span>
+<div>
+<p class="text-xs font-bold text-blue-900 uppercase">Estimated Delivery</p>
+<p class="text-sm font-semibold text-blue-700">Oct 24 - Oct 26, 2023</p>
+</div>
+</div>
+<button class="w-full bg-primary text-white py-4 rounded-lg font-bold text-lg hover:bg-primary-container transition-all flex items-center justify-center gap-2 mt-4 shadow-lg shadow-primary/20">
+<span>Place Order</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<p class="text-[10px] text-center text-slate-400 mt-4 px-4 leading-relaxed">
+                                By placing this order, you agree to the SmartSupply Global Logistics Terms of Service and Privacy Policy.
+                            </p>
+</div>
+</div>
+<!-- Warehouse Map Visualization -->
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden p-1">
+<div class="h-40 bg-slate-200 rounded-lg overflow-hidden relative">
+<img alt="Logistics Map" class="w-full h-full object-cover opacity-60" data-alt="clean minimal digital map interface showing logistics routes and warehouse pin locations in a modern blue aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ24KNSJpCrZAz2_HB85yp0tpCiDrGmpDLzZkTr3WAXprkwkO2MoiGcqam7xq9pAT3g0PTLWWK_7MV0d9SeyNOIuSBlr-Msm1Pz5TX4IOJIDdz3uFeV4SD3RnzmEk0yV-6rN3RcAKIFdskeTn5x_unnYqV2a-H17eRNw0e_NmpYXANt2GpMCTOcwF6kVT3AHVmVO9kamRUAlkWlKjAKTo4EZstDe1MR4QEw0SnaSdhS98FIbgh9aT5gNsmS0vhVne9MfI_c3kaPA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+<span class="text-[10px] font-bold text-slate-700">ROUTE OPTIMIZED</span>
+</div>
+</div>
+<div class="p-4">
+<p class="text-xs font-bold text-slate-500 uppercase mb-2">Inventory Source</p>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500 text-sm" data-icon="warehouse">warehouse</span>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900">Hub Central-East (HE-04)</p>
+<p class="text-[10px] text-slate-500">In-stock: 12,400 units</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

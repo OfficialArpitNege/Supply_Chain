@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Tracking | SmartSupply</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#191c1e",
+                        "secondary-container": "#d5e3fc",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#8ebdf9",
+                        "surface-container": "#eceef0",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#532800",
+                        "error-container": "#ffdad6",
+                        "background": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#f9a767",
+                        "secondary-fixed": "#d5e3fc",
+                        "secondary": "#515f74",
+                        "surface-variant": "#e0e3e5",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#2f1400",
+                        "on-primary-fixed": "#001c37",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container-high": "#e6e8ea",
+                        "outline": "#727780",
+                        "surface-dim": "#d8dadc",
+                        "outline-variant": "#c2c7d1",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-primary": "#ffffff",
+                        "primary": "#00355f",
+                        "tertiary-fixed": "#ffdcc4",
+                        "tertiary-container": "#743b00",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#2d6197",
+                        "primary-fixed": "#d2e4ff",
+                        "primary-container": "#0f4c81",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#42474f",
+                        "on-secondary-container": "#57657a",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "inverse-surface": "#2d3133",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#a0c9ff",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#07497d",
+                        "surface-bright": "#f7f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xs": "8px",
+                        "lg": "32px",
+                        "md": "24px",
+                        "sm": "16px",
+                        "xl": "48px",
+                        "gutter": "24px",
+                        "margin": "32px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "data-tabular": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "title-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "data-tabular": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar (Authority: JSON) -->
+<nav class="bg-white dark:bg-slate-900 fixed left-0 top-0 h-full w-[280px] border-r border-slate-200 dark:border-slate-800 flex flex-col py-6 px-4 z-50">
+<div class="flex items-center gap-3 px-2 mb-10">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="inventory">inventory</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-blue-900 dark:text-blue-100 leading-none">SmartSupply</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Global Logistics</p>
+</div>
+</div>
+<div class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-inter text-sm font-medium">Product Search</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+<span class="font-inter text-sm font-medium">Place Order</span>
+</a>
+<!-- ACTIVE TAB: Order Tracking -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-4 border-blue-700 dark:border-blue-400 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-inter text-sm font-medium">Order Tracking</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span class="font-inter text-sm font-medium">Orders List</span>
+</a>
+</div>
+<div class="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span class="font-inter text-sm font-medium">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-inter text-sm font-medium">Logout</span>
+</a>
+</div>
+</nav>
+<!-- TopNavBar (Authority: JSON) -->
+<header class="bg-white dark:bg-slate-900 fixed top-0 right-0 left-[280px] z-40 flex justify-between items-center px-6 h-16 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="search">search</span>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-full pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary text-on-surface" placeholder="Search shipments, orders, or items..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
+<div class="flex items-center gap-3">
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-slate-200" data-alt="professional corporate headshot of a logistics manager in a modern office setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOHTUGIAtRvsO3Y69mrrmQ6Z4NZsczUBYFV31qM0ad4JIOy2bmsSx-02OYyJOPiDilF7Fj6T9TpMBHJe-8yc2vFvcJSlNGd8Us32SO_Wy1JZLeW5ixgisqIlNN4qY3I06INFVZIQ4STeFVChEGNybtyQAfuyAAF9VTksPkDzI9oj9FnTmt0Pa25eFFFxncZCQ4MCgTHqAvQowoy34v4mVXD77PGO3cNojfeRLoGFv4DbZGNSHQb5OqEKolFZJSZdhh9_06D5iKwQ"/>
+<div class="hidden lg:block">
+<p class="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">Alex Harrison</p>
+<p class="text-[10px] text-slate-500 font-medium">Ops Director</p>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] pt-16 min-h-screen">
+<div class="p-8 max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary mb-1">Track Shipment</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+                        Real-time status for Order <span class="font-bold text-on-surface">#SS-984210</span>
+</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="bg-white border border-outline-variant px-4 py-2 rounded-lg flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="map">map</span>
+                        View Live Map
+                    </button>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-lg font-body-sm text-body-sm font-bold shadow-sm hover:brightness-110 transition-all">
+                        Download Report
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Tracking Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Status Flow Card (Full Width) -->
+<div class="col-span-12 bg-white border border-slate-200 rounded-xl p-8">
+<div class="flex flex-col gap-10">
+<div class="flex justify-between items-center">
+<h3 class="font-title-sm text-title-sm text-primary">Logistics Journey</h3>
+<div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+<span class="text-xs font-bold uppercase tracking-wider">In Transit</span>
+</div>
+</div>
+<!-- Horizontal Stepper -->
+<div class="relative flex items-center justify-between">
+<!-- Progress Lines -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 w-full bg-slate-100 z-0"></div>
+<div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 w-[66%] bg-primary z-0"></div>
+<!-- Step 1: Pending -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+<span class="material-symbols-outlined" data-icon="inventory_2" data-weight="fill" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div class="mt-4 text-center">
+<p class="font-body-sm font-bold text-primary">Pending</p>
+<p class="text-[10px] text-slate-400 font-medium">May 12, 09:15 AM</p>
+</div>
+</div>
+<!-- Step 2: Accepted -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+<span class="material-symbols-outlined" data-icon="task_alt" data-weight="fill" style="font-variation-settings: 'FILL' 1;">task_alt</span>
+</div>
+<div class="mt-4 text-center">
+<p class="font-body-sm font-bold text-primary">Accepted</p>
+<p class="text-[10px] text-slate-400 font-medium">May 12, 11:30 AM</p>
+</div>
+</div>
+<!-- Step 3: Dispatched (Active) -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="w-12 h-12 rounded-full bg-white border-4 border-primary text-primary flex items-center justify-center shadow-md ring-4 ring-blue-100">
+<span class="material-symbols-outlined" data-icon="local_shipping" data-weight="fill" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div class="mt-4 text-center">
+<p class="font-body-sm font-bold text-primary">Dispatched</p>
+<p class="text-[10px] text-slate-400 font-medium">May 13, 08:45 AM</p>
+</div>
+</div>
+<!-- Step 4: Delivered -->
+<div class="relative z-10 flex flex-col items-center">
+<div class="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div class="mt-4 text-center opacity-40">
+<p class="font-body-sm font-bold text-on-surface">Delivered</p>
+<p class="text-[10px] text-slate-400 font-medium">Estimated May 15</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Order Details (Table Layout) -->
+<div class="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+<h3 class="font-label-caps text-label-caps text-slate-500 uppercase">Itemized Manifest</h3>
+<span class="text-xs text-slate-400">3 SKUs Total</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-[#F1F5F9] border-b border-slate-200">
+<tr>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">Product Details</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-center">Quantity</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Unit Price</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Total</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100">
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-slate-100 rounded overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="modern industrial sensor device on a white background with clean reflections" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4fcJkL7LzymiocDmgVmTsZvn0qcenSeNB7v7IVCn2A8D1O944DdX3rm4WB--zChwRKO0R8oJqtbmn6NuqJYgZ2LNv74kFfawbN33rm23dU2yC0mxr0ufFUhdvIXcVoeQkdPEIq2nvVgA4CCiclsXHfHyAizUR38HqsOEl6_C22n7udGts9Rz2Pn4KRc-uxJT1iJahrM1UIrwsrkAhC1eg-K7A65yLlzwAFE3r2pW6fc9siY8vhTOT4L8D59dLMqWJGHZkKyj7pQ"/>
+</div>
+<div>
+<p class="font-data-tabular text-data-tabular text-on-surface">Precision Optic Sensor XL</p>
+<p class="text-[10px] text-slate-400">SKU: PRO-449-OPT</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-center font-data-tabular">24</td>
+<td class="px-6 py-4 text-right font-data-tabular">$120.00</td>
+<td class="px-6 py-4 text-right font-data-tabular font-bold">$2,880.00</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-slate-100 rounded overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="bulk packaging of high-density lithium batteries in industrial crate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMFeUKLbztO4b18xGKYYzz5nKl-2c8HxmalwbbTKi6L9i0JHQ4ASQxxViYYGvlaoU1KO9XATeA9iO5BF7vhkpoK7jpFg8x0PYtKsMPpzsfKn_r8fzBRshvOW2KX0C5vKq_cA3B58Wyqjt98pfpDglrrCEFFiEDcuikKDYIIDdrtVD3lsq4X1_u6n4idOPItVvmUBWPKPaDGClIsFQ4ce-epQR_Solo5T3u9leFKjAG-UnGGbESQqM3P5bo2zRC6ByK-HUu0VhYAA"/>
+</div>
+<div>
+<p class="font-data-tabular text-data-tabular text-on-surface">Lithium-Ion Battery Pack v2</p>
+<p class="text-[10px] text-slate-400">SKU: BATT-LI-V2</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-center font-data-tabular">10</td>
+<td class="px-6 py-4 text-right font-data-tabular">$450.00</td>
+<td class="px-6 py-4 text-right font-data-tabular font-bold">$4,500.00</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-slate-100 rounded overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="specialized circuit boards for industrial automation on a technical workspace" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZBtab3L3PU3AFfhodga2kHtTgne_3sdFKX5OKOhloMw806x2b-k0k4ukr5rtvYNUdybxhQZqRq1j_S2C2J-kR-LprivD-umfqnVVf10LwwMBA_fYkw9iZ-sRdL5zdg5N6E9I_DIUSnjufZ1-PHDGrx_-HG6ixmG6QjaHTeHdKyfkgPv4jNGzc3SHLqo-illowC3l7EK-9TDGRDCLFFwh1L1buvNbwCTfurqCiFVukPOhaKqHLxkL7UQKDHYixYZv2ipcefay_3w"/>
+</div>
+<div>
+<p class="font-data-tabular text-data-tabular text-on-surface">Interface Controller Module</p>
+<p class="text-[10px] text-slate-400">SKU: CTRL-MOD-88</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-center font-data-tabular">5</td>
+<td class="px-6 py-4 text-right font-data-tabular">$89.50</td>
+<td class="px-6 py-4 text-right font-data-tabular font-bold">$447.50</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="bg-slate-50/50">
+<td class="px-6 py-4 text-right font-label-caps text-label-caps text-slate-500" colspan="3">Subtotal</td>
+<td class="px-6 py-4 text-right font-title-sm text-primary">$7,827.50</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+<!-- Shipping Metadata (Sidebar style) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Location Summary Card -->
+<div class="bg-white border border-slate-200 rounded-xl p-6">
+<h4 class="font-title-sm text-title-sm text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="location_on">location_on</span>
+                            Current Location
+                        </h4>
+<div class="aspect-video bg-slate-100 rounded-lg overflow-hidden mb-4 relative">
+<div class="absolute inset-0 bg-slate-200 opacity-20 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]"></div>
+<img class="w-full h-full object-cover grayscale opacity-60" data-alt="minimalist stylized map of a large metropolitan area with shipping routes highlighted in primary blue" data-location="Chicago" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0_SyRZoBlMsUoNLPTD0gKg2Mg0E1Age_VDk-ntFJzcJZugzjjXDhFxUW9ak5bh5f1bmT_TsBnVDBqyAyOa6q63f76l6WcKYyZm-uZt88our-U-TD4VpzZvQne5YG2M6wVxU9CRICIFmrEQwDXyF9lF5Hovr4qG_iKAKI00avdpJAFl_dS7NiIKC6LjAeXZF9eDoxGOIzxao7A3ZJYotfMZ2Ikd0NO6WN0l3ESYzEqidOxcJof8n5h8g1fytUkaOvVVsNra3lyRg"/>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+<div class="w-4 h-4 bg-primary rounded-full animate-ping absolute"></div>
+<div class="w-4 h-4 bg-primary rounded-full relative border-2 border-white"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Destination</p>
+<p class="font-body-md text-on-surface">Rotterdam Hub, Netherlands</p>
+</div>
+<span class="material-symbols-outlined text-slate-300" data-icon="warehouse">warehouse</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Origin</p>
+<p class="font-body-md text-on-surface">Shenzhen Logistics Park, CN</p>
+</div>
+<span class="material-symbols-outlined text-slate-300" data-icon="factory">factory</span>
+</div>
+</div>
+</div>
+<!-- Logistics Partner Card -->
+<div class="bg-primary-container text-on-primary-container rounded-xl p-6 shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="support_agent">support_agent</span>
+</div>
+<div>
+<p class="text-xs font-bold text-blue-200">Assigned Dispatcher</p>
+<p class="font-title-sm text-white">Marcus Vane</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="bg-white/10 rounded-lg p-3">
+<p class="text-[10px] text-blue-200 uppercase tracking-widest font-bold">Latest Update</p>
+<p class="text-sm text-white mt-1">Cleared customs at Port of Antwerp. Expected loading onto feeder ship at 02:00 UTC.</p>
+</div>
+<button class="w-full bg-white text-primary font-bold py-2.5 rounded-lg text-sm hover:bg-blue-50 transition-colors">
+                                Message Logistics Support
+                            </button>
+</div>
+</div>
+</div>
+<!-- Vertical History / Audit Trail -->
+<div class="col-span-12 bg-white border border-slate-200 rounded-xl p-8">
+<h3 class="font-title-sm text-title-sm text-primary mb-8">Detailed Audit Trail</h3>
+<div class="space-y-0 relative">
+<!-- Timeline Line -->
+<div class="absolute left-[9px] top-2 bottom-2 w-[2px] bg-slate-100"></div>
+<!-- History Item 1 -->
+<div class="relative pl-10 pb-8">
+<div class="absolute left-0 top-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center ring-4 ring-white">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="local_shipping" data-weight="fill" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<p class="font-body-md font-bold text-on-surface">Shipment Departed from Facility</p>
+<p class="text-xs text-slate-400 mt-0.5">May 13, 2024 - 08:45 AM • Shenzhen Facility B-12</p>
+<p class="font-body-sm text-on-surface-variant mt-2 max-w-2xl">Package has been scanned and loaded onto vehicle [TRUCK-449]. Estimated arrival at regional hub in 14 hours.</p>
+</div>
+</div>
+<!-- History Item 2 -->
+<div class="relative pl-10 pb-8">
+<div class="absolute left-0 top-1.5 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center ring-4 ring-white">
+<div class="w-2 h-2 rounded-full bg-slate-400"></div>
+</div>
+<div>
+<p class="font-body-md font-bold text-on-surface">Order Accepted &amp; Processed</p>
+<p class="text-xs text-slate-400 mt-0.5">May 12, 2024 - 11:30 AM • System Office</p>
+<p class="font-body-sm text-on-surface-variant mt-2 max-w-2xl">Order requirements verified. Inventory allocated from Central Warehouse. Logistics partner [DHL Express] confirmed.</p>
+</div>
+</div>
+<!-- History Item 3 -->
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center ring-4 ring-white">
+<div class="w-2 h-2 rounded-full bg-slate-400"></div>
+</div>
+<div>
+<p class="font-body-md font-bold text-on-surface">Order Received</p>
+<p class="text-xs text-slate-400 mt-0.5">May 12, 2024 - 09:15 AM • Client Portal</p>
+<p class="font-body-sm text-on-surface-variant mt-2 max-w-2xl">Digital purchase order #SS-984210 submitted and payment authorized.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#f9a767",
+                        "surface-container": "#ededf3",
+                        "surface-tint": "#2d6197",
+                        "outline": "#727780",
+                        "inverse-primary": "#a0c9ff",
+                        "tertiary-fixed": "#ffdcc4",
+                        "on-surface-variant": "#42474f",
+                        "secondary": "#006a61",
+                        "surface-bright": "#f9f9fe",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#d2e4ff",
+                        "secondary-fixed": "#89f5e7",
+                        "secondary-container": "#86f2e4",
+                        "on-primary-fixed": "#001c37",
+                        "on-surface": "#191c1f",
+                        "on-background": "#191c1f",
+                        "tertiary-container": "#743b00",
+                        "background": "#f9f9fe",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#006f66",
+                        "on-primary-fixed-variant": "#07497d",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#532800",
+                        "surface-container-highest": "#e2e2e7",
+                        "primary": "#00355f",
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "on-tertiary-fixed": "#2f1400",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "primary-container": "#0f4c81",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e7e8ed",
+                        "surface-dim": "#d9dadf",
+                        "on-secondary-fixed": "#00201d",
+                        "surface-variant": "#e2e2e7",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "surface": "#f9f9fe",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f3f3f8",
+                        "outline-variant": "#c2c7d1",
+                        "on-secondary-fixed-variant": "#005049",
+                        "on-primary-container": "#8ebdf9",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "inverse-on-surface": "#f0f0f5",
+                        "inverse-surface": "#2e3034"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "80px",
+                        "gutter": "24px",
+                        "lg": "48px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "container_max_width": "1280px",
+                        "base": "8px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "display-xl": ["Inter"],
+                        "data-tabular": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-xl": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-tabular": ["14px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "title-sm": ["18px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background font-body-md text-on-background min-h-screen flex flex-col">
+<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="account_tree">account_tree</span>
+<span class="text-xl font-bold tracking-tight text-blue-900 dark:text-blue-400 font-display-xl">LogiChain</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-label-caps">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+<span class="hidden md:block">EN</span>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-label-caps cursor-pointer hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</div>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-gutter pt-xl pb-lg">
+<div class="w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
+<div class="relative h-24 bg-primary-container flex items-center justify-center">
+<div class="absolute inset-0 opacity-20" data-alt="Close-up of organized logistics warehouse shelves with industrial lighting and soft bokeh effect" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCq1vpn8dB-ioLroiDx8xxj9EtX_Dfwf1z8Dh5Dffq8eA_t_ECGNY7O0pBU8nz2vPmOUwKe1SqeWUx2dCL0D6KRFIy5683oaC8P1glIyjOjW7ghj8i5fcqIqRDyx1Y9fkvUJJ-Oj5u3KFdx_D51d5fMuYZbdHb8pHk1GWpCTbi6rScDzfugXCyAY_YIjBIUh1V8CgW-4366WtxTozdHW2ePMmKP8p2wrUS6Ohnhihi2Gcm1yoxu6c6M5unr2_7HYnK1X5T15aRVemJ1'); background-size: cover; background-position: center;"></div>
+<div class="relative flex flex-col items-center">
+<div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg mb-[-24px] z-10">
+<span class="material-symbols-outlined text-primary" data-icon="person_add" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person_add</span>
+</div>
+</div>
+</div>
+<div class="p-md md:p-lg mt-sm">
+<div class="text-center mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Create your account</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Access your smart supply chain dashboard</p>
+</div>
+<form class="space-y-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="full-name">Full Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="badge">badge</span>
+<input class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-lg font-body-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline-variant" id="full-name" placeholder="John Doe" type="text"/>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="email">Email</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="mail">mail</span>
+<input class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-lg font-body-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline-variant" id="email" placeholder="email@example.com" type="email"/>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="password">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="lock">lock</span>
+<input class="w-full pl-10 pr-10 py-3 bg-white border border-outline-variant rounded-lg font-body-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline-variant" id="password" placeholder="********" type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[20px] cursor-pointer" data-icon="visibility">visibility</span>
+</div>
+</div>
+<div class="flex items-center gap-2 pt-xs">
+<input class="w-4 h-4 text-primary border-outline-variant rounded focus:ring-primary/20" id="terms" type="checkbox"/>
+<label class="font-body-sm text-body-sm text-on-surface-variant" for="terms">
+                            I agree to the <a class="text-primary font-medium hover:underline" href="#">Terms of Service</a>
+</label>
+</div>
+<button class="w-full py-4 bg-primary text-white font-label-caps text-label-caps uppercase tracking-widest rounded-lg shadow-md hover:bg-primary-container active:opacity-80 transition-all duration-200 flex items-center justify-center gap-2" type="submit">
+                        Get Started
+                        <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</form>
+<div class="mt-lg pt-md border-t border-outline-variant/30 text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                        Already have an account? 
+                        <a class="text-primary font-semibold hover:underline" href="#">Sign In</a>
+</p>
+</div>
+</div>
+</div>
+</main>
+<footer class="w-full flex flex-col md:flex-row items-center justify-between px-6 md:px-12 max-w-7xl mx-auto py-8 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
+<div class="font-body-sm text-slate-500 dark:text-slate-400 mb-4 md:mb-0">
+            © 2024 LogiChain Systems. All rights reserved.
+        </div>
+<div class="flex gap-gutter">
+<a class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer" href="#">Privacy Policy</a>
+<a class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer" href="#">Terms of Service</a>
+<a class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer" href="#">Security</a>
+</div>
+</footer>
+</body></html>

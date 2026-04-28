@@ -1,6 +1,6 @@
 // tactical disruption hub - manages route shocks and manual rerouting
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, Tooltip, useMap } from 'react-leaflet';
 import { MdWarning, MdCompareArrows, MdLocationOn, MdClear } from 'react-icons/md';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -47,6 +47,9 @@ const DisruptionManagement = () => {
     const [lastDisruption, setLastDisruption] = useState(null);
     const [loading, setLoading] = useState(false);
     const [reroutingId, setReroutingId] = useState(null);
+    // Track which route IDs were disrupted so we can still show affected deliveries
+    // even after they've been auto-rerouted off the original route.
+    const [disruptedRouteIds, setDisruptedRouteIds] = useState([]);
 
     useEffect(() => {
         const unsubDel = onSnapshot(collection(db, 'deliveries'), (snap) => {
@@ -65,7 +68,11 @@ const DisruptionManagement = () => {
         }
 
         setLoading(true);
+        // BUG FIX 5 (State/UI sync): Clear lastDisruption so affectedDeliveries resets
+        // before the new disruption result arrives. Prevents showing stale affected list.
+        setLastDisruption(null);
         const tid = toast.loading(`Injecting ${disruptionType.replace('_', ' ')}...`);
+        console.debug('[Disruption] Injecting:', { route: selectedRouteId, type: disruptionType, severity });
         try {
             const res = await callApi('/deliveries/disrupt', {
                 method: 'POST',
@@ -76,6 +83,13 @@ const DisruptionManagement = () => {
                 })
             });
 
+            console.debug('[Disruption] Response:', res);
+            console.debug('[Disruption] Affected count:', res.affected_count);
+
+            // Track the disrupted route so affected deliveries remain visible
+            // even after they are auto-rerouted away from this route segment.
+            setDisruptedRouteIds(prev => [...new Set([...prev, selectedRouteId])]);
+
             setLastDisruption({
                 ...res,
                 timestamp: Date.now(),
@@ -83,7 +97,7 @@ const DisruptionManagement = () => {
             });
 
             if (res.affected_count > 0) {
-                toast.success(`⚠️ ${res.affected_count} deliveries affected and flagged for rerouting`, { id: tid });
+                toast.success(`⚠️ ${res.affected_count} deliveries rerouted away from disruption`, { id: tid });
             } else {
                 toast(`Disruption injected — no active deliveries on this route`, { id: tid, icon: '📡' });
             }
@@ -98,12 +112,31 @@ const DisruptionManagement = () => {
         if (reroutingId) return;
         setReroutingId(deliveryId);
         const tid = toast.loading('Calculating new optimal route...');
+
+        // Debug: capture pre-reroute state for comparison
+        const deliveryBefore = deliveries.find(d => d.id === deliveryId);
+        console.debug('[Reroute] Starting reroute for delivery:', deliveryId);
+        console.debug('[Reroute] Current route_id:', deliveryBefore?.selected_route?.route_id);
+        console.debug('[Reroute] ETA before:', deliveryBefore?.eta_remaining, 'mins');
+
         try {
             const res = await callApi(`/deliveries/${deliveryId}/reroute`, {
                 method: 'POST',
                 body: JSON.stringify({ reason: `Manual override for ${disruptionType.replace('_', ' ')}` })
             });
-            toast.success(res.message, { id: tid });
+            console.debug('[Reroute] Response:', res);
+            console.debug('[Reroute] New route_id:', res.new_route_id || '(same)');
+            console.debug('[Reroute] ETA after:', res.eta_remaining ?? '(not returned)', 'mins');
+            console.debug('[Reroute] Decision:', res.status, '-', res.message);
+            // Handle all possible backend response statuses
+            if (res.status === 'success' || res.status === 'fallback') {
+                toast.success(res.message || 'Reroute applied successfully', { id: tid });
+            } else if (res.status === 'skipped') {
+                // Delivery already has a good route — show informational toast
+                toast(`Route check: ${res.message}`, { id: tid, icon: 'ℹ️' });
+            } else {
+                toast(res.message || 'Reroute processed', { id: tid, icon: '🔀' });
+            }
         } catch (e) {
             toast.error(e.message, { id: tid });
         } finally {
@@ -112,12 +145,37 @@ const DisruptionManagement = () => {
     };
 
     const affectedDeliveries = useMemo(() => {
-        if (!selectedRouteId) return [];
-        return deliveries.filter(d => 
-            d.selected_route?.route_id === selectedRouteId && 
-            ['active', 'in_transit', 'dispatched', 'nearing'].includes(d.status)
-        );
-    }, [deliveries, selectedRouteId]);
+        // BUG FIX 1: Only show affected deliveries AFTER a disruption has been injected.
+        // Previously this showed deliveries the moment a route was clicked (before injection).
+        if (!selectedRouteId || !lastDisruption) return [];
+        const activeStatuses = ['active', 'in_transit', 'dispatched', 'nearing'];
+
+        // BUG FIX 2: Use word-boundary-safe matching for route IDs to prevent substring
+        // false-positives (e.g. "R1" matching "R10", "R100", etc.).
+        const routeIdMatchesReason = (reason, routeId) => {
+            if (!reason || !routeId) return false;
+            // Escape special regex chars in routeId, then match as whole word/token
+            const escaped = routeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, 'i').test(reason);
+        };
+
+        return deliveries.filter(d => {
+            if (!activeStatuses.includes(d.status)) return false;
+
+            // Case 1: Delivery is currently on the selected route (not yet rerouted)
+            if (d.selected_route?.route_id === selectedRouteId) return true;
+
+            // Case 2: Delivery was auto-rerouted AWAY from this route by the disruption.
+            // After injection, the backend changes selected_route.route_id to a new route,
+            // so we detect these by checking the reroute_reason references the disrupted route.
+            if (d.rerouted && d.reroute_reason) {
+                if (routeIdMatchesReason(d.reroute_reason, selectedRouteId)) return true;
+                if (disruptedRouteIds.some(rid => routeIdMatchesReason(d.reroute_reason, rid))) return true;
+            }
+
+            return false;
+        });
+    }, [deliveries, selectedRouteId, disruptedRouteIds, lastDisruption]);
 
     const activeRoutes = useMemo(() => {
         const routes = new Map();
@@ -170,25 +228,44 @@ const DisruptionManagement = () => {
                         {/* Render Active Routes (Aggregated by segment) */}
                         {activeRoutes.map(route => {
                             const isRerouted = route.deliveries.some(d => d.rerouted);
+                            
+                            const validPath = (route.path || []).map(p => {
+                                if (!p) return null;
+                                if (p.lat !== undefined && p.lon !== undefined) return [p.lat, p.lon];
+                                if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
+                                if (Array.isArray(p) && p.length >= 2) return [p[0], p[1]];
+                                return null;
+                            }).filter(Boolean);
+                            
+                            if (validPath.length < 2) return null;
+
                             return (
                                 <Polyline
                                     key={route.id}
-                                    positions={route.path.map(p => [p.lat, p.lon])}
-                                    color={selectedRouteId === route.id ? '#F59E0B' : (isRerouted ? '#F59E0B' : '#3B82F6')}
-                                    weight={selectedRouteId === route.id ? 8 : 4}
-                                    opacity={selectedRouteId === route.id ? 1 : (isRerouted ? 0.8 : 0.4)}
+                                    positions={validPath}
+                                    // BUG FIX 3: Selected route = amber (targeted); rerouted = blue (new active path); default = blue.
+                                    // Previously both selected AND rerouted were amber, making them visually indistinguishable.
+                                    color={selectedRouteId === route.id ? '#F59E0B' : '#3B82F6'}
+                                    weight={selectedRouteId === route.id ? 12 : 8}
+                                    opacity={selectedRouteId === route.id ? 1 : (isRerouted ? 0.8 : 0.6)}
                                     eventHandlers={{
-                                        click: () => setSelectedRouteId(route.id)
+                                        click: (e) => {
+                                            setSelectedRouteId(route.id);
+                                            // BUG FIX 6: Clear prior disruption context when switching routes.
+                                            // Prevents affected delivery list from a previous disruption
+                                            // leaking into the newly selected route view.
+                                            setLastDisruption(null);
+                                        }
                                     }}
                                 >
-                                    <Popup>
-                                        <div className="p-2">
+                                    <Tooltip sticky>
+                                        <div className="p-1">
                                             <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Route Segment</p>
                                             <p className="text-sm font-bold text-slate-900">{route.id}</p>
-                                            <p className="text-[10px] font-bold text-blue-600 mt-2 uppercase">{route.count} Active Deliveries</p>
+                                            <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase">{route.count} Active Deliveries</p>
                                             {isRerouted && <p className="text-[10px] font-bold text-orange-600 uppercase mt-1">🔀 Reroute Applied</p>}
                                         </div>
-                                    </Popup>
+                                    </Tooltip>
                                 </Polyline>
                             );
                         })}
@@ -197,28 +274,60 @@ const DisruptionManagement = () => {
                         {deliveries.filter(d => ['active', 'in_transit', 'dispatched', 'nearing'].includes(d.status)).map(d => {
                             const isRerouted = d.rerouted;
                             const isSelected = selectedRouteId === d.selected_route?.route_id;
-                            const validRoute = d.route?.filter(p => p && p.lat !== undefined && p.lon !== undefined) || [];
+                            
+                            const validRoute = (d.route || []).map(p => {
+                                if (!p) return null;
+                                if (p.lat !== undefined && p.lon !== undefined) return [p.lat, p.lon];
+                                if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
+                                if (Array.isArray(p) && p.length >= 2) return [p[0], p[1]];
+                                return null;
+                            }).filter(Boolean);
 
                             if (validRoute.length < 2) return null;
+                            
+                            const validOldRoute = (d.old_route || []).map(p => {
+                                if (!p) return null;
+                                if (p.lat !== undefined && p.lon !== undefined) return [p.lat, p.lon];
+                                if (p.lat !== undefined && p.lng !== undefined) return [p.lat, p.lng];
+                                if (Array.isArray(p) && p.length >= 2) return [p[0], p[1]];
+                                return null;
+                            }).filter(Boolean);
 
                             return (
                                 <React.Fragment key={`path-${d.id}`}>
                                     {/* Traversed/Historical Journey (Warehouse to Driver) */}
-                                    {isRerouted && d.old_route && d.old_route.length > 1 && (
+                                    {isRerouted && validOldRoute.length > 1 && (
                                         <Polyline
-                                            positions={d.old_route.map(p => [p.lat, p.lon])}
-                                            color="#F59E0B"
+                                            positions={validOldRoute}
+                                            color="#6B7280"
                                             weight={3}
-                                            opacity={0.3}
+                                            opacity={0.4}
+                                            dashArray="6 4"
+                                            eventHandlers={{
+                                                click: () => {
+                                                    if (d.selected_route?.route_id) {
+                                                        setSelectedRouteId(d.selected_route.route_id);
+                                                    }
+                                                }
+                                            }}
                                         />
                                     )}
                                     {/* Main/Active Route (Driver to Destination) */}
                                     {(isSelected || isRerouted) && (
                                         <Polyline
-                                            positions={validRoute.map(p => [p.lat, p.lon])}
-                                            color={isRerouted ? '#F59E0B' : '#3B82F6'}
+                                            positions={validRoute}
+                                            // BUG FIX 4: New rerouted path = blue; selected-but-not-rerouted = blue highlight.
+                                            // Previously isRerouted used amber which was wrong per spec (new route → blue).
+                                            color='#3B82F6'
                                             weight={isSelected ? 6 : 4}
                                             opacity={isSelected ? 1 : 0.8}
+                                            eventHandlers={{
+                                                click: () => {
+                                                    if (d.selected_route?.route_id) {
+                                                        setSelectedRouteId(d.selected_route.route_id);
+                                                    }
+                                                }
+                                            }}
                                         />
                                     )}
                                     
@@ -296,9 +405,9 @@ const DisruptionManagement = () => {
                 </div>
 
                 {/* Control Panel */}
-                <div className="col-span-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+                <div className="col-span-4 flex flex-col gap-6 min-h-0">
                     {/* Disruption Form */}
-                    <div className="bg-[#1E293B] border border-slate-700 rounded-3xl p-6 shadow-xl">
+                    <div className="shrink-0 bg-[#1E293B] border border-slate-700 rounded-3xl p-6 shadow-xl">
                         <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
                             <MdWarning className="text-amber-500" /> Disruption Parameters
                         </h3>
@@ -353,64 +462,109 @@ const DisruptionManagement = () => {
                     </div>
 
                     {/* Affected Deliveries List */}
-                    <div className="flex-1 bg-[#1E293B] border border-slate-700 rounded-3xl p-6 shadow-xl flex flex-col min-h-0">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="flex-1 min-h-[280px] bg-[#1E293B] border border-slate-700 rounded-3xl p-6 shadow-xl flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center mb-5 shrink-0">
                             <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <MdCompareArrows className="text-blue-500" /> Impacted Assets
                             </h3>
-                            <span className="bg-slate-900 text-blue-400 px-3 py-1 rounded-full text-[10px] font-black tracking-widest border border-blue-500/20">
-                                {affectedDeliveries.length}
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${
+                                affectedDeliveries.length > 0
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : 'bg-slate-900 text-blue-400 border-blue-500/20'
+                            }`}>
+                                {affectedDeliveries.length} {affectedDeliveries.length === 1 ? 'unit' : 'units'}
                             </span>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
+                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
                             {!selectedRouteId ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-12">
-                                    <MdLocationOn size={48} className="text-slate-700 mb-4" />
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select a route segment<br/>to analyze impact</p>
+                                <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center">
+                                        <MdLocationOn size={24} className="text-slate-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400">No route selected</p>
+                                        <p className="text-[10px] text-slate-600 mt-1">Click any route line on the map</p>
+                                    </div>
                                 </div>
                             ) : affectedDeliveries.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-12">
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Zero Impact Detected<br/>on this segment</p>
+                                <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                        <span className="text-xl">✅</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-400">No Impact Detected</p>
+                                        <p className="text-[10px] text-slate-500 mt-1">No active deliveries on this segment</p>
+                                    </div>
                                 </div>
                             ) : (
                                 affectedDeliveries.map(d => (
-                                    <div key={d.id} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 transition-all hover:border-slate-600 group">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Delivery ID</p>
-                                                <p className="text-sm font-bold text-white tracking-tight">#{d.delivery_id?.slice(-8)}</p>
+                                    <div key={d.id} className="bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl p-4 transition-all">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-2">
+                                                {d.rerouted
+                                                    ? <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 shrink-0"></span>
+                                                    : <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0"></span>
+                                                }
+                                                <span className="text-xs font-bold text-white font-mono">#{(d.delivery_id || d.id)?.slice(-8)}</span>
                                             </div>
-                                            <div className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${
-                                                d.risk_level === 'HIGH' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                            }`}>
-                                                {d.risk_level} Risk
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${
+                                                d.risk_level === 'HIGH'
+                                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                            }`}>{d.risk_level} Risk</span>
+                                        </div>
+
+                                        {/* Rerouted badge */}
+                                        {d.rerouted && (
+                                            <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-emerald-500/5 border border-emerald-500/15 rounded-lg">
+                                                <span className="text-[10px]">🔀</span>
+                                                <span className="text-[9px] text-emerald-400 font-bold truncate">Auto-rerouted — new optimal path applied</span>
+                                            </div>
+                                        )}
+
+                                        {/* Stats grid */}
+                                        <div className="grid grid-cols-3 gap-2 mb-3">
+                                            <div className="bg-slate-800/60 rounded-lg px-2 py-1.5 text-center">
+                                                <p className="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">ETA</p>
+                                                <p className="text-[11px] font-black text-orange-400">{Math.round(d.eta_remaining ?? 0)}m</p>
+                                            </div>
+                                            <div className="bg-slate-800/60 rounded-lg px-2 py-1.5 text-center">
+                                                <p className="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Done</p>
+                                                <p className="text-[11px] font-black text-white">{d.progress ?? 0}%</p>
+                                            </div>
+                                            <div className="bg-slate-800/60 rounded-lg px-2 py-1.5 text-center">
+                                                <p className="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Status</p>
+                                                <p className="text-[10px] font-black text-blue-400 capitalize">{(d.status || '').replace('_', ' ')}</p>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Current ETA</p>
-                                                <p className="text-xs font-bold text-orange-400">{Math.round(d.eta_remaining)} MINS</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Progress</p>
-                                                <p className="text-xs font-bold text-white">{d.progress}%</p>
-                                            </div>
+
+                                        {/* Progress bar */}
+                                        <div className="w-full h-1 bg-slate-800 rounded-full mb-3 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-700 ${d.rerouted ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                                style={{ width: `${d.progress ?? 0}%` }}
+                                            />
                                         </div>
+
+                                        {/* Reroute button */}
                                         <button
                                             onClick={() => handleReroute(d.id)}
-                                            disabled={reroutingId === d.id}
-                                            className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                                d.rerouted 
-                                                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
-                                                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20'
+                                            disabled={!!reroutingId}
+                                            className={`w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 ${
+                                                reroutingId === d.id
+                                                    ? 'bg-slate-800 text-slate-500 cursor-wait'
+                                                    : d.rerouted
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                                                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30'
                                             }`}
                                         >
-                                            {reroutingId === d.id ? 'Calculating...' : d.rerouted ? '✓ Reroute Applied' : 'Apply Reroute'}
+                                            {reroutingId === d.id ? '⟳  Calculating...' : d.rerouted ? '✓  Reroute Applied' : '→  Apply Reroute'}
                                         </button>
                                     </div>
-                                )
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

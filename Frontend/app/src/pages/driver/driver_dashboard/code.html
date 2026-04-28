@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FleetOps Driver Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9ff",
+                        "surface": "#f9f9ff",
+                        "surface-container": "#e7eeff",
+                        "surface-container-high": "#dee8ff",
+                        "inverse-surface": "#263143",
+                        "outline": "#737685",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#006c4a",
+                        "tertiary-container": "#7c4100",
+                        "on-secondary-fixed": "#002114",
+                        "on-background": "#111c2d",
+                        "on-primary-fixed-variant": "#003ea6",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#111c2d",
+                        "tertiary": "#5a2e00",
+                        "secondary-fixed": "#85f8c4",
+                        "secondary-fixed-dim": "#68dba9",
+                        "surface-tint": "#2156ca",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#afc1ff",
+                        "on-tertiary-fixed": "#2f1500",
+                        "inverse-on-surface": "#ecf1ff",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f0f3ff",
+                        "primary": "#00328a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#82f5c1",
+                        "primary-container": "#0047bb",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#d8e3fb",
+                        "outline-variant": "#c3c6d6",
+                        "on-tertiary-container": "#ffb273",
+                        "on-secondary-fixed-variant": "#005137",
+                        "tertiary-fixed-dim": "#ffb77d",
+                        "primary-fixed-dim": "#b3c5ff",
+                        "background": "#f9f9ff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary-fixed-variant": "#6e3900",
+                        "on-surface-variant": "#434653",
+                        "on-primary-fixed": "#00174a",
+                        "tertiary-fixed": "#ffdcc3",
+                        "on-secondary-container": "#00714e",
+                        "surface-dim": "#cfdaf2",
+                        "inverse-primary": "#b3c5ff",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#d8e3fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "stack-md": "1rem",
+                        "margin-safe": "1.5rem",
+                        "gutter": "1rem",
+                        "touch-target-min": "48px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Public Sans"],
+                        "display-lg": ["Public Sans"],
+                        "headline-md": ["Public Sans"],
+                        "body-lg": ["Public Sans"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .progress-line { background: repeating-linear-gradient(90deg, #cbd5e1 0, #cbd5e1 4px, transparent 4px, transparent 8px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-[#F8FAFC] dark:bg-slate-950 flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 border-b border-[#E2E8F0] dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container border border-outline-variant">
+<img alt="Driver profile photo" class="w-full h-full object-cover" data-alt="Professional portrait of a middle-aged male delivery driver with a friendly expression, wearing a navy blue uniform shirt in soft daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3c4DMV-JVhx9LcPwh7VlbOMzcZ2UrUlnJF5MXjIgI5RSxKb-2ApbMsL4gxY9R8j1Rzfu4R1UB7KKDTpDK6UQmLPZDRmzZiio4-lVDPu2zMOTNO0_Ma99rSBOUX-C0T2tpQtm0TZma8vyas5iPyUYEi9cjYZzFdkT4GGRFwvz-f9jvvzOtnz33kGcxCYsdNeP61ZEJGeFIfq-quwIgzlCOAigPTxjWRa4BFr20sNY5ee7Tf0Z64L59ZJEk8JORXRk1Bn9x25boFoY"/>
+</div>
+<span class="text-xl font-black text-slate-900 dark:text-slate-100 font-['Public_Sans'] tracking-tight">FleetOps</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#0047BB] dark:text-blue-400" data-icon="signal_cellular_alt">signal_cellular_alt</span>
+</div>
+</header>
+<main class="mt-20 px-4 max-w-5xl mx-auto space-y-4">
+<!-- Status Card: Bento-style Hero -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="md:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col justify-between min-h-[160px]">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Current Status</span>
+<span class="bg-secondary text-on-secondary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">In Transit</span>
+</div>
+<div class="mt-4">
+<h1 class="font-display-lg text-display-lg text-primary-container leading-none">On Schedule</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Headed to Regional Hub #402</p>
+</div>
+</div>
+<div class="bg-primary-container text-on-primary-container rounded-xl p-6 flex flex-col justify-between">
+<span class="font-label-caps text-label-caps text-on-primary-container opacity-80 uppercase">Arrival Window</span>
+<div>
+<span class="text-4xl font-black">14:45</span>
+<p class="text-sm font-medium mt-1">Estimated Arrival (ETA)</p>
+</div>
+<div class="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="timer">timer</span>
+<span class="text-sm font-bold">12 min remaining</span>
+</div>
+</div>
+</div>
+<!-- Route Overview & Navigation Action -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="p-6">
+<div class="flex justify-between items-center mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface">Live Route Progress</h2>
+<button class="bg-primary hover:bg-primary-container text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition-colors active:scale-95 touch-target-min">
+<span class="material-symbols-outlined" data-icon="navigation">navigation</span>
+                        Open in Maps
+                    </button>
+</div>
+<!-- Visual Route Line -->
+<div class="relative py-8">
+<div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 progress-line rounded-full opacity-30"></div>
+<div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-primary w-[65%] rounded-full shadow-[0_0_12px_rgba(0,50,138,0.4)]"></div>
+<div class="relative flex justify-between items-center">
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined" data-icon="warehouse">warehouse</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Start</span>
+</div>
+<div class="absolute left-[65%] -translate-x-1/2 flex flex-col items-center gap-2 z-10">
+<div class="w-12 h-12 rounded-full bg-white border-2 border-primary flex items-center justify-center text-primary shadow-lg">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+</div>
+<span class="text-xs font-black text-primary">You</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-on-surface-variant ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Hub #402</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-variant/30 h-48 relative">
+<img alt="Route Map" class="w-full h-full object-cover grayscale opacity-60" data-alt="Abstract stylized city map with blue and gray tones, showing navigation lines and simplified building footprints in a utilitarian style" data-location="San Francisco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGeHXkjGl2aPqeW7ZRyfIZl7I7g2RV71Ygl_uoDOxuSKTbgJpOlPK5OI2wVA94KpDKEfUiy_XfzVuWQDDX3Qr_M720ZJaGv-Gd545vxcGbOt26E63Tkjywd-9eNEboO9kxnETOW_2mZceBVJnsrUegT_6whUb5yVBlZwoYyUrGHGBMGJ0ZFW_qYi-geOejoRavQnmQwfqO-L4RpaasmOxX--GfXhtHlDdr5CD2aREMy6qwQGQisadJM0AMtWcvzZs3IVINQqrbQ1A"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent h-12 bottom-0"></div>
+</div>
+</div>
+<!-- Assigned Deliveries List -->
+<div class="space-y-3">
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="inventory_2">inventory_2</span>
+                Manifest Details
+            </h2>
+<div class="space-y-3">
+<!-- Delivery Item 1 -->
+<div class="bg-white border-l-4 border-primary rounded-lg shadow-sm p-4 flex justify-between items-center">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Electronic Components (12kg)</p>
+<p class="text-sm text-on-surface-variant">Order #FO-9921 • Fragile</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-sm font-label-caps text-on-surface-variant">Destination</p>
+<p class="font-bold text-primary">Gate 4, Bay A</p>
+</div>
+</div>
+<!-- Delivery Item 2 -->
+<div class="bg-white border-l-4 border-outline-variant rounded-lg shadow-sm p-4 flex justify-between items-center opacity-60">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-outline">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Industrial Spare Parts</p>
+<p class="text-sm text-on-surface-variant">Order #FO-9925 • Priority B</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-sm font-label-caps text-on-surface-variant">Destination</p>
+<p class="font-bold">South Loading Dock</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Simulation Controls -->
+<div class="pt-6 pb-12">
+<button class="w-full bg-surface-container-high hover:bg-surface-container-highest text-primary font-bold py-4 rounded-xl border-2 border-dashed border-primary-container/30 flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined" data-icon="fast_forward">fast_forward</span>
+                Simulate Move Forward (Update Progress)
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 flex justify-around items-center h-20 px-4 pb-safe bg-white dark:bg-slate-900 border-t border-[#E2E8F0] dark:border-slate-800 z-50">
+<!-- Dashboard (Active) -->
+<a class="flex flex-col items-center justify-center text-[#0047BB] dark:text-blue-400 border-t-2 border-[#0047BB] pt-2 h-full transition-transform duration-100 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-['Public_Sans'] text-xs font-medium">Dashboard</span>
+</a>
+<!-- Deliveries -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 pt-2 h-full hover:text-[#0047BB] transition-colors active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-['Public_Sans'] text-xs font-medium">Deliveries</span>
+</a>
+<!-- Route -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 pt-2 h-full hover:text-[#0047BB] transition-colors active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-['Public_Sans'] text-xs font-medium">Route</span>
+</a>
+<!-- Settings -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 pt-2 h-full hover:text-[#0047BB] transition-colors active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Public_Sans'] text-xs font-medium">Settings</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SmartSupply - Product Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#191c1e",
+                      "secondary-container": "#d5e3fc",
+                      "surface-container-low": "#f2f4f6",
+                      "tertiary-fixed-dim": "#ffb780",
+                      "on-tertiary-fixed-variant": "#6f3800",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "error": "#ba1a1a",
+                      "on-primary-container": "#8ebdf9",
+                      "surface-container": "#eceef0",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#532800",
+                      "error-container": "#ffdad6",
+                      "background": "#f7f9fb",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#f9a767",
+                      "secondary-fixed": "#d5e3fc",
+                      "secondary": "#515f74",
+                      "surface-variant": "#e0e3e5",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed": "#2f1400",
+                      "on-primary-fixed": "#001c37",
+                      "surface-container-highest": "#e0e3e5",
+                      "surface-container-high": "#e6e8ea",
+                      "outline": "#727780",
+                      "surface-dim": "#d8dadc",
+                      "outline-variant": "#c2c7d1",
+                      "surface": "#f7f9fb",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "on-primary": "#ffffff",
+                      "primary": "#00355f",
+                      "tertiary-fixed": "#ffdcc4",
+                      "tertiary-container": "#743b00",
+                      "inverse-on-surface": "#eff1f3",
+                      "surface-tint": "#2d6197",
+                      "primary-fixed": "#d2e4ff",
+                      "primary-container": "#0f4c81",
+                      "on-tertiary": "#ffffff",
+                      "on-surface-variant": "#42474f",
+                      "on-secondary-container": "#57657a",
+                      "primary-fixed-dim": "#a0c9ff",
+                      "inverse-surface": "#2d3133",
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#a0c9ff",
+                      "on-background": "#191c1e",
+                      "on-primary-fixed-variant": "#07497d",
+                      "surface-bright": "#f7f9fb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xs": "8px",
+                      "lg": "32px",
+                      "md": "24px",
+                      "sm": "16px",
+                      "xl": "48px",
+                      "gutter": "24px",
+                      "margin": "32px",
+                      "base": "4px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "data-tabular": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "title-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "data-tabular": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #f7f9fb;
+            color: #191c1e;
+        }
+        .product-card-hover:hover {
+            border-color: #0f4c81;
+            box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-background">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[280px] border-r border-slate-200 bg-white z-50 flex flex-col py-6 px-4">
+<div class="flex items-center gap-3 px-2 mb-10">
+<div class="w-10 h-10 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-blue-900 tracking-tight">SmartSupply</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Global Logistics</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded bg-blue-50 text-blue-700 border-r-4 border-blue-700 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">search</span>
+<span>Product Search</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+<span>Place Order</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span>Order Tracking</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">inventory</span>
+<span>Orders List</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-slate-100 pt-6 space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-slate-600 hover:bg-slate-50 transition-all duration-200 ease-in-out font-medium text-sm" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[280px] z-40 flex justify-between items-center px-6 h-16 bg-white border-b border-slate-200">
+<div class="flex items-center gap-4 flex-1">
+<span class="material-symbols-outlined text-slate-400">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-sm text-slate-600" placeholder="Quick search for shipments or SKU..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden lg:block">
+<p class="text-sm font-bold text-slate-900 leading-none">Alex Rivera</p>
+<p class="text-xs text-slate-500">Procurement Manager</p>
+</div>
+<img alt="User Profile" class="h-9 w-9 rounded-full object-cover" data-alt="Professional headshot of a Hispanic male in a business suit with a neutral office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_nZoAvp_47rldxfkC-_Dd5WwW_PoLpfV84lsmgXWDsA3ngkdKPFSwIL30ppBk-08RQ5pkhv7jyeCX4XBXl6ijYHxjjusSNWgycr1n554_goE5BvXhhTOji02tlyPkDD38tsWJ2jVmoUxPadWX6Aozg303cfxvTEBqZvslsLxjzRFQ7WwipwRHYNp7CVNz2-MCnjkJsqjPc6SFVX_75WprybU_8EjbIR-FysrN07J2AHB4fwDRtMXq3qlddrEEIBpMoyiU9uzSzQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-[280px] pt-16 min-h-screen">
+<div class="max-w-[1400px] mx-auto p-margin">
+<!-- Page Header & Hero Search -->
+<div class="mb-lg space-y-6">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<nav class="flex items-center gap-2 text-slate-400 font-label-caps mb-2">
+<span>Inventory</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary-container">Catalog</span>
+</nav>
+<h2 class="font-headline-md text-headline-md text-on-surface">Product Search</h2>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                            Filters
+                        </button>
+<button class="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-[20px]">sort</span>
+                            Sort by: Relevance
+                        </button>
+</div>
+</div>
+<!-- Primary Search Bar -->
+<div class="relative w-full max-w-4xl mx-auto">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-400">search</span>
+</div>
+<input class="block w-full pl-12 pr-4 py-4 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-body-md shadow-sm transition-shadow" placeholder="Enter product name, category, or manufacturer SKU..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+<kbd class="hidden sm:inline-flex items-center px-2 py-1 border border-slate-200 rounded text-xs font-sans text-slate-400 bg-slate-50">
+                            CMD + K
+                        </kbd>
+</div>
+</div>
+<!-- Category Quick Filters -->
+<div class="flex flex-wrap gap-2 justify-center">
+<button class="px-5 py-1.5 rounded-full bg-primary text-white text-body-sm font-medium">All Supplies</button>
+<button class="px-5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:border-slate-400 text-body-sm font-medium transition-colors">Electronics</button>
+<button class="px-5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:border-slate-400 text-body-sm font-medium transition-colors">Heavy Machinery</button>
+<button class="px-5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:border-slate-400 text-body-sm font-medium transition-colors">Raw Materials</button>
+<button class="px-5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:border-slate-400 text-body-sm font-medium transition-colors">Packaging</button>
+<button class="px-5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:border-slate-400 text-body-sm font-medium transition-colors">Safety Gear</button>
+</div>
+</div>
+<!-- Results Count -->
+<div class="mb-sm flex items-center justify-between">
+<p class="text-body-sm text-slate-500">Showing <span class="font-bold text-slate-900">12</span> of <span class="font-bold text-slate-900">1,248</span> products</p>
+<div class="flex gap-1">
+<button class="p-1 rounded bg-white border border-slate-200 text-slate-400">
+<span class="material-symbols-outlined text-[20px]">grid_view</span>
+</button>
+<button class="p-1 rounded text-slate-400 hover:bg-white hover:border hover:border-slate-200 transition-all">
+<span class="material-symbols-outlined text-[20px]">format_list_bulleted</span>
+</button>
+</div>
+</div>
+<!-- Product Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<!-- Product Card 1 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative group">
+<img alt="Industrial Sensor" class="w-full h-full object-cover" data-alt="High-tech industrial laser sensor module with metallic housing and glowing blue indicator light on a clean workbench" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-zj-ScrfPBD-l0RjX0RVuSFhZSLTvUFGtM0jj6A07gNsR4ee64w5dF9x9duKvZXE8SIv8vMIRcwfdEr3Tv6CpZxbpbhHECgAP06ko7pTznlfOxMSCzW5gmzN7ZeO9Upo6Q40qpw9O0wVBKjJ4k9pNm0SozELiW-zJR-pnx7IHA3A9po4i7_RgHIHnH4fnRZ5Zp6EfakCrTiTz0WmNUjNNEtFVlU1J0HAsB7PzSAXoU2IhKVHYumy2xRIf97IKks1aeRxVZbhYHw"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Electronics • Sensotec</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Smart Laser Sensor V4</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.8</span>
+<span class="text-xs text-slate-400">(124 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$284.50</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Pneumatic Actuator" class="w-full h-full object-cover" data-alt="Close-up of a heavy-duty industrial pneumatic cylinder actuator made of brushed stainless steel in a factory setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPNtp8mVSuStGTZpK6O6c_l1CRFMUmWPhr2oLH4_ECnCT1MFXFYcEa2CBzUoBj6TRoFAolsxQ1A7jkcLH_pgKI-eXvgF2Pxjf6632FeEkgwUGIMOR25fMVy77YtIkFonRptEacObZH8v7vRJoOwfUYt2mGiUv8oz5MVPUvqAzQBuBVoDMN7A9J6RRsCk3Ad6hRUxuJXIhU19uhpJqxTXeGHHY03e4pPf9h0kAzf2EU7-en9Y1pBhG9F2Tgggir3irY2jnfeJmHcw"/>
+<div class="absolute top-2 right-2">
+<span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded uppercase">Low Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Machinery • Atlas Copco</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Heavy-Duty Actuator</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.5</span>
+<span class="text-xs text-slate-400">(89 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$1,150.00</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Safety Helmet" class="w-full h-full object-cover" data-alt="Durable industrial yellow safety helmet resting on a blueprints roll with safety glasses next to it in bright daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3CS2-Z5SKpOABuMK1DnY3AFTaxAAMQuusKTBqy1g9pf6349-6H5dcfriWmhOH1FdMPRM8zFyQIoe67Zup4uhqm9nfk6AeaQz06Zk89Fzgtttpd_HJSFZXh6Kg47IaOmmnlmTQT7YCUIssq_7BaYTNmChnCu6w0M4DpF1CDOtij9pY5NHhnQNbknrJXPLpx3YN3pGGs_AF80tr3bnKqaco2iWLUK1pPlmsb66vorWW_TdoUnjA7CU07n5ozmuJqE6B8-UdqxRXrA"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Safety • 3M Global</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Vented Safety Helmet</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.9</span>
+<span class="text-xs text-slate-400">(312 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$45.00</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Electrical Connector" class="w-full h-full object-cover" data-alt="Macro photo of copper electrical wiring connectors and components arranged neatly on a dark grey technical background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVETEopYnfygfpqsmP6XH4lei15G2Ar4aEDXE_6P3GZ1-NZfYavO60-rhl5i3_QsF8kJ9Qq8qSwV0aUuLhDuoQxPwhjp5YzxMPFOb_Y0U5_e67nGYuBABqLq0ZQf8onPFDvmw_l0DobRAlgA61gXs5Yiu3zESh29JV2YiruBT6zoAgTFhksmMNaRaMjaugDkzy3Abx54CuYTk5N5-ubnAGq1rk-oBUQNieRowqrux5ch_3pCw1AOujUi3VW97WdRZgKiuQeYnQCg"/>
+<div class="absolute top-2 right-2">
+<span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded uppercase">Out of Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Parts • Siemens</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Terminal Block 50A</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-slate-300 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.2</span>
+<span class="text-xs text-slate-400">(45 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$12.50</p>
+</div>
+<button class="bg-slate-200 text-slate-400 p-2 rounded cursor-not-allowed flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 5 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Pallet Wrap" class="w-full h-full object-cover" data-alt="Stacked rolls of industrial grade clear stretch pallet wrap film in a warehouse storage area with soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBBZbjnGDFa9OLv-z7Lx6LMSDuknF5_Nc6v5AOYfAMjEJWPChQmbHyoAhVFzuUl7v4S8EymDABWNdkUOAXGw65RVLkos504tNYNY_wIGuA0GpGMD8chyQB70dd8V1XadVi0kK9G5slWIKM5DFWZYJkOupFKXlBSqYrdmKyTQKnrLpnRMgFYvSdasGEDAM79iKDC72O63l6gcO4Bw-uaKkEKmsIzQP_5vzsLw3poDy6vjKol1EAk_8eadhXtZrwWm8kSuHcylaiXQ"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Packaging • Uline</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Bulk Stretch Wrap</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.6</span>
+<span class="text-xs text-slate-400">(210 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$89.99</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 6 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Digital Multimeter" class="w-full h-full object-cover" data-alt="Professional grade digital multimeter with bright LCD display and orange protective casing on an electrical testing station" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAODje-vIy_bnTvyrPn--DWPpwgtJmfTCuQRDDiMfqt-KVmBk3tZel4J4PblaGQSMcFWYrn2qZJczdaBQyP8YSxBK4wz8QGkFWTQkyypuC52X7g5peTpIlKT1C_wyt8QVsqv1OkhmrQtE6y00XknTLrCT_C9RIew91Z92ZE6Iy8pkgn_eDsv78u_a5x1Z0CRGgopZcDcsJbVW30XXz-6BgWDWzz2zz1bUY--KsM8SLux9LuM5hawgqTl8-z6vMb6x4rM56dwPs-Lw"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Tools • Fluke</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Digital Multimeter X-200</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.9</span>
+<span class="text-xs text-slate-400">(418 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$499.00</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 7 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Steel Cable" class="w-full h-full object-cover" data-alt="Heavy-duty braided steel wire cable coiled on a wooden industrial spool in a shipyard or construction environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_lIiDRnzsXmAv6jNCR3ooWLZyWEmSnvtAkuDBvccgKcybQcyU0EjFWUkYCUeDeWrpG1XmcZWVXzgzyri5VlJJjBcQIdX5QqxkpM4-3d3CB2bED_SPLHHNxawBPOJ9C1Sq6_4IkaRgB1wQ0ySCDuYS4y1YX113r9e99Qw6b3H5jdKZCNv3iANvuBTqAtcVHjZptKyyJlgHqapp1ChtCY5pqpBlusDWnfh5MbAhfwx69evgDSosDwCvPu8iovzrIUk3puwWODFAOQ"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Materials • WireCorp</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Braided Steel Wire (50m)</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.4</span>
+<span class="text-xs text-slate-400">(56 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$175.00</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 8 -->
+<div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col product-card-hover transition-all duration-200">
+<div class="h-48 w-full bg-slate-50 relative">
+<img alt="Conveyor Belt" class="w-full h-full object-cover" data-alt="Section of an industrial rubber conveyor belt with rollers and metal frame in a modern logistics sorting center" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnW8lHE9KEJs2gQz4r_sSiORAvejo-KK5-JBcH-VsWgI0N9LKJG_smEfB0l3o1_xA7dGC7Rdo5cp7QsepXJGRM3tFEGbF4LTPKam_BiWVazM61HpzhCF64Y88-J6lFLSJKL8kxurfbptSaoB2185QJ_UFP-U1DFXV1200m0D6eCsaFcXcorYJzyvpZTnwq2eGMzh0h2YsmYa8foyifcfu3y6sa80f5KruQw8oYy1EWTGa-xkfHWeNoDfcMUZtYQG-wHET-8_U8lQ"/>
+<div class="absolute top-2 right-2">
+<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded uppercase">In Stock</span>
+</div>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="mb-2">
+<span class="font-label-caps text-slate-400 uppercase">Machinery • FlexiMove</span>
+<h3 class="font-title-sm text-title-sm text-slate-900 mt-1">Modular Belt Section</h3>
+</div>
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-amber-400 text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-700">4.7</span>
+<span class="text-xs text-slate-400">(156 reviews)</span>
+</div>
+<div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4">
+<div>
+<p class="text-[10px] text-slate-400 font-bold uppercase">Price</p>
+<p class="font-data-tabular text-lg text-primary">$2,400.00</p>
+</div>
+<button class="bg-primary text-white p-2 rounded hover:bg-primary-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-xl flex items-center justify-between border-t border-slate-200 pt-md">
+<button class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                    Previous
+                </button>
+<div class="flex items-center gap-1">
+<button class="w-10 h-10 rounded bg-primary text-white text-sm font-bold">1</button>
+<button class="w-10 h-10 rounded hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors">2</button>
+<button class="w-10 h-10 rounded hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors">3</button>
+<span class="px-2 text-slate-300">...</span>
+<button class="w-10 h-10 rounded hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors">104</button>
+</div>
+<button class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors">
+                    Next
+                    <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Contextual "View Order" Summary Sidebar (Optional/Decorative) -->
+<div class="fixed top-16 right-0 bottom-0 w-80 bg-white border-l border-slate-200 hidden 2xl:flex flex-col">
+<div class="p-6 border-b border-slate-100">
+<h3 class="font-title-sm text-title-sm text-slate-900 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">shopping_cart</span>
+                Current Order
+            </h3>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="text-center py-12 px-6">
+<div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+<span class="material-symbols-outlined text-slate-300 text-4xl">inventory_2</span>
+</div>
+<p class="text-sm text-slate-500 font-medium">Your order list is empty. Start adding products from the search results.</p>
+</div>
+</div>
+<div class="p-6 bg-slate-50 border-t border-slate-200">
+<div class="flex justify-between mb-4">
+<span class="text-sm text-slate-500 font-medium">Estimated Total</span>
+<span class="font-data-tabular font-bold text-slate-900">$0.00</span>
+</div>
+<button class="w-full bg-slate-300 text-white py-3 rounded font-bold text-sm cursor-not-allowed uppercase tracking-wider" disabled="">
+                Review Order
+            </button>
+</div>
+</div>
+</body></html>

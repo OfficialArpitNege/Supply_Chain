@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LogiTrack Pro - Driver Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f9f9ff",
+                    "tertiary-fixed": "#ffdcc3",
+                    "on-tertiary-fixed": "#2f1500",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#85f8c4",
+                    "on-secondary-fixed-variant": "#005137",
+                    "tertiary-container": "#7c4100",
+                    "on-error-container": "#93000a",
+                    "secondary": "#006c4a",
+                    "tertiary-fixed-dim": "#ffb77d",
+                    "on-tertiary-fixed-variant": "#6e3900",
+                    "on-secondary": "#ffffff",
+                    "outline": "#737685",
+                    "surface-container-highest": "#d8e3fb",
+                    "primary-container": "#0047bb",
+                    "outline-variant": "#c3c6d6",
+                    "on-primary-fixed": "#00174a",
+                    "on-primary-container": "#afc1ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#ffb273",
+                    "on-secondary-container": "#00714e",
+                    "inverse-surface": "#263143",
+                    "secondary-fixed-dim": "#68dba9",
+                    "surface-variant": "#d8e3fb",
+                    "surface-bright": "#f9f9ff",
+                    "on-secondary-fixed": "#002114",
+                    "surface-container-high": "#dee8ff",
+                    "inverse-primary": "#b3c5ff",
+                    "on-primary-fixed-variant": "#003ea6",
+                    "on-surface-variant": "#434653",
+                    "primary": "#00328a",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-surface": "#111c2d",
+                    "tertiary": "#5a2e00",
+                    "error-container": "#ffdad6",
+                    "secondary-container": "#82f5c1",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#2156ca",
+                    "inverse-on-surface": "#ecf1ff",
+                    "surface-container": "#e7eeff",
+                    "surface-dim": "#cfdaf2",
+                    "primary-fixed": "#dbe1ff",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f0f3ff",
+                    "on-primary": "#ffffff",
+                    "on-background": "#111c2d",
+                    "background": "#f9f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "margin-safe": "1.5rem",
+                    "gutter": "1rem",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Public Sans"],
+                    "headline-md": ["Public Sans"],
+                    "body-lg": ["Public Sans"],
+                    "display-lg": ["Public Sans"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col z-40 h-screen w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-['Public_Sans'] antialiased">
+<div class="px-6 py-8">
+<h1 class="text-xl font-black text-blue-700 dark:text-blue-400 tracking-tight">LogiTrack Pro</h1>
+<div class="mt-6 flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="Close-up professional portrait of a delivery driver in a uniform with a friendly expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVPXu5yTUreMAuyBK6Ej14d4ZZHL8SW6h4EEkITByHX5sk4Y_2PgKDrfcyXO0NRTzRD_eIBHd-EXsMf2PrtodeZHzYR6_kZIbcWmlMM2x3r3yKquq6-3TDuGj0M7V4B39iHgtbP9iutOj25yfZnUU94vmSAEBZkq2kh1H0lSF7Mbi3lYG98NNlElKktCvM_bdzXRG1329srWO4AiEDRA5_E-lGoT1BM3mTYLsCdKdRcE4hhUcwXu-HLXEr1C-daTpuSYg6fKLElIc"/>
+</div>
+<div>
+<p class="text-on-surface font-bold text-sm">Driver ID: 88219</p>
+<p class="text-on-surface-variant text-xs">Active Shift</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 mt-4">
+<a class="flex items-center gap-4 px-6 py-4 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-r-4 border-blue-700 font-bold active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm">Overview</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="navigation">navigation</span>
+<span class="text-sm">Live Route</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span class="text-sm">Manifest</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="text-sm">Vehicle</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm">Settings</span>
+</a>
+</nav>
+<div class="p-6 mt-auto">
+<button class="w-full py-3 px-4 bg-error text-on-error font-bold rounded-lg text-sm transition-all hover:brightness-110 active:scale-95">
+                Go Offline
+            </button>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-8 ml-64 sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm focus:ring-2 focus:ring-primary" placeholder="Search manifest or route..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer transition-all hover:text-blue-600" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer transition-all hover:text-blue-600" data-icon="emergency_home">emergency_home</span>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer transition-all hover:text-blue-600" data-icon="help_outline">help_outline</span>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 p-8">
+<div class="max-w-7xl mx-auto">
+<header class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface">Driver Command Center</h2>
+<p class="font-body-lg text-sm text-on-surface-variant">Route #TRK-8821-XP | Region: North West Sector</p>
+</header>
+<div class="grid grid-cols-12 gap-8">
+<!-- Left Column: Focus Controls -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Status Card -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-sm border-l-4 border-l-primary">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">CURRENT STATUS</p>
+<p class="font-headline-md text-headline-md text-primary mt-1">In Transit</p>
+</div>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-full">On Schedule</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="speed">speed</span>
+                                    Current Speed
+                                </span>
+<span class="text-sm font-bold">62 MPH</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="local_gas_station">local_gas_station</span>
+                                    Fuel Level
+                                </span>
+<span class="text-sm font-bold">78%</span>
+</div>
+</div>
+</div>
+<!-- ETA Info Card -->
+<div class="bg-primary text-on-primary p-6 rounded-xl shadow-lg relative overflow-hidden">
+<div class="relative z-10">
+<p class="font-label-caps text-label-caps opacity-80">ESTIMATED ARRIVAL</p>
+<p class="font-display-lg text-display-lg my-2">14:45</p>
+<p class="text-sm font-medium">Arrival Window: 14:30 — 15:00</p>
+<div class="mt-6 flex items-center gap-3 bg-white/10 p-3 rounded-lg backdrop-blur-sm">
+<span class="material-symbols-outlined" data-icon="timer">timer</span>
+<div>
+<p class="text-xs font-bold">NEXT STOP IN</p>
+<p class="text-lg font-black leading-none">22 MIN</p>
+</div>
+</div>
+</div>
+<!-- Abstract Decorative Element -->
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+</div>
+<!-- Simulation Controls -->
+<div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4 uppercase">Operational Simulation</p>
+<button class="w-full flex items-center justify-center gap-3 bg-white border border-outline-variant hover:bg-surface py-4 rounded-lg transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform" data-icon="forward_10">forward_10</span>
+<span class="font-bold text-on-surface">Move Forward</span>
+</button>
+<p class="text-[10px] text-center text-on-surface-variant mt-3 italic">Simulate route progress for dispatcher training purposes</p>
+</div>
+</div>
+<!-- Right Column: Operational Data -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Large Route Overview -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col h-[400px]">
+<div class="p-4 border-b border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="map">map</span>
+<h3 class="font-bold text-on-surface">Route Overview</h3>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary-container text-on-primary-container text-xs font-bold rounded hover:brightness-95 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="open_in_new">open_in_new</span>
+                                Open in Maps
+                            </button>
+</div>
+<div class="flex-1 relative bg-slate-100">
+<img class="absolute inset-0 w-full h-full object-cover opacity-80" data-alt="High-resolution digital map interface showing a complex urban grid with a highlighted blue delivery route and real-time traffic markers" data-location="Seattle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJX-FsWEEruGgoaOlLyn-wucHPNbiTW-rVOXLx3IF_86pN-Eg9Av_t5uNOaSsCICpQeAJGVEsKsn0xodKaPC3aX1IVpjuUFCoX4UczLNryFDvHnYmH9A7mIKLnR3G5H90ENZ6ecJqz2bDX0lL2VR8jJN9og45EjtD5h2h2-F5Y88JkTXAfPgoNqhjgtBMN4adToAkfffEEPW9aQKaYzWG9sXo7jxsFv0M_n9-glUKMecVik3c9-3JJOg3pVci_0HGt6P36YZqZUvs"/>
+<!-- Visual Progress Overlay -->
+<div class="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-4 rounded-lg border border-outline shadow-xl">
+<div class="flex justify-between text-[10px] font-bold text-on-surface-variant mb-2">
+<span>START: WH-A1</span>
+<span>DESTINATION: PORT 44</span>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[65%] relative">
+<div class="absolute right-0 top-0 h-full w-4 bg-white/40 skew-x-12"></div>
+</div>
+</div>
+<div class="mt-2 flex justify-between items-center">
+<span class="text-xs text-primary font-bold">65% Completed</span>
+<span class="text-xs text-on-surface-variant">14.2 Miles Remaining</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Manifest Details -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm">
+<div class="p-4 border-b border-outline-variant">
+<h3 class="font-bold text-on-surface">Current Manifest</h3>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container text-on-surface-variant font-label-caps text-[10px]">
+<tr>
+<th class="px-6 py-3">ORDER ID</th>
+<th class="px-6 py-3">WAREHOUSE</th>
+<th class="px-6 py-3">DESTINATION</th>
+<th class="px-6 py-3 text-right">UNITS</th>
+<th class="px-6 py-3">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant text-sm">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-bold text-primary">ORD-4921</td>
+<td class="px-6 py-4">Seattle Hub (WH-A1)</td>
+<td class="px-6 py-4">Central Distribution Ctr</td>
+<td class="px-6 py-4 text-right">240</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded">
+                                                LOADED
+                                            </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors bg-surface-container-lowest">
+<td class="px-6 py-4 font-bold text-primary">ORD-5012</td>
+<td class="px-6 py-4">Seattle Hub (WH-A1)</td>
+<td class="px-6 py-4">Bellevue Retail Point</td>
+<td class="px-6 py-4 text-right">85</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded">
+                                                LOADED
+                                            </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-bold text-primary">ORD-4833</td>
+<td class="px-6 py-4">Tacoma Port (WH-B4)</td>
+<td class="px-6 py-4">Mainline Transit Hub</td>
+<td class="px-6 py-4 text-right">1,200</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold rounded">
+                                                PENDING PICKUP
+                                            </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

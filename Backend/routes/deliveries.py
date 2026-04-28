@@ -739,20 +739,20 @@ def reroute_delivery(delivery_id: str = Path(...), payload: Optional[RerouteRequ
         should_reroute = False
         decision_reason = ""
 
-        # Condition 1: HIGH risk delivery (disruption-affected)
-        if risk_level == "HIGH":
+        # Condition 1: Explicit admin override via payload (highest priority — always honour)
+        if payload and payload.reason:
+            should_reroute = True
+            decision_reason = f"Admin override: {payload.reason}"
+
+        # Condition 2: HIGH risk delivery (disruption-affected)
+        elif risk_level == "HIGH":
             should_reroute = True
             decision_reason = f"HIGH risk level detected"
 
-        # Condition 2: Recommended action explicitly mentions reroute/backup
+        # Condition 3: Recommended action explicitly mentions reroute/backup
         elif any(kw in recommended_action for kw in ["reroute", "backup", "disruption", "critical"]):
             should_reroute = True
             decision_reason = f"Stored action recommends reroute: {data.get('recommended_action', '')[:60]}"
-
-        # Condition 3: Admin explicit override via payload
-        elif payload and payload.reason:
-            should_reroute = True
-            decision_reason = f"Admin override: {payload.reason}"
 
         if not should_reroute:
             return {
@@ -958,7 +958,9 @@ def inject_disruption(payload: DisruptionRequest):
                         "current_index": 0, # Start at the beginning of the new segment
                         "progress": data.get("progress", 0), # Maintain progress context
                         "rerouted": True,
-                        "reroute_reason": f"Dynamic Reroute: {payload.type.replace('_', ' ').title()} on {payload.affected_route}. Recalculated optimal path.",
+                        # Include the disrupted route_id in reroute_reason so the frontend
+                        # can identify these deliveries even after the route_id changes.
+                        "reroute_reason": f"Dynamic Reroute: {payload.type.replace('_', ' ').title()} on route {payload.affected_route}. Recalculated optimal path.",
                         "rerouted_at": datetime.now(timezone.utc),
                         "recommended_action": "CRITICAL: Disruption detected. System has recalculated the most efficient path.",
                         "status": "in_transit"
